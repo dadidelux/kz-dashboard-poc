@@ -442,6 +442,7 @@ for week in data:
 # Create a DataFrame with numerical columns
 df = pd.DataFrame(data)
 
+
 # Convert numerical columns to integers
 numeric_columns = df.columns[1:]  # Exclude the "Venue" column
 df[numeric_columns] = df[numeric_columns].astype(int)
@@ -451,6 +452,7 @@ st.title("Weekly Data with Trend Indicator")
 
 # Reset the index to include the "Venue" column
 df.reset_index(drop=True, inplace=True)
+
 
 # Display the DataFrame with trend indicators
 prev_week = df.columns[-2]  # Get the name of the previous week's column
@@ -484,11 +486,13 @@ fig = px.bar(
 fig.update_xaxes(title="Provider")
 fig.update_yaxes(title=current_week)
 # Display the table with trend indicators
-st.write(df)
+#st.write(df)
+st.dataframe(df, use_container_width=True)
 st.plotly_chart(fig)
 
 
 # ================================================================ KEYWORD VIEWS =================================================================
+
 
 @st.cache_data
 def fetch_keywords_from_clevertap(from_date, to_date):
@@ -595,7 +599,7 @@ if st.button("Fetch Keywords"):
     if keywords:
         display_wordcloud(keywords)
         df = convert_to_dataframe(keywords)
-        st.dataframe(df)  # Display the DataFrame in Streamlit
+        st.dataframe(df, use_container_width=True)  # Display the DataFrame in Streamlit
 
         # Create a download button for the CSV
         csv = to_csv(df)
@@ -669,7 +673,7 @@ def display_horizontal_bar_chart(data):
         # Filter out the entry with Product Name "-1"
         df = df[df["Product Name"] != "-1"]
         # Display the DataFrame
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
         # Using Plotly to create a horizontal bar chart
         fig = px.bar(
             df,

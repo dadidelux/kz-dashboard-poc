@@ -36,7 +36,7 @@ def create_gauge_with_color_and_data(week_values, total_value=7000):
                 "steps": [
                     {
                         "range": [0, week_values[0]],
-                        "color": f"rgba(0, 255, 0, 1)",
+                        "color": f"rgba(0, 255, 0, {percentages[1]/100})",
                     },
                     {
                         "range": [week_values[0], sum(week_values[:2])],

@@ -521,6 +521,11 @@ def fetch_keywords_from_clevertap(from_date, to_date):
     # Data payload as a dictionary
     data = {
         "event_name": EVENT_NAME,
+        "common_profile_properties": {
+            "geo_fields": [
+                ["United Arab Emirates"],
+            ]
+        },
         "from": int(from_date),
         "to": int(to_date),
         "groups": groups,
@@ -640,6 +645,11 @@ def fetch_product_views(from_date, to_date):
 
     data = {
         "event_name": EVENT_NAME,
+        "common_profile_properties": {
+            "geo_fields": [
+                ["United Arab Emirates"],
+            ]
+        },
         "from": int(from_date),
         "to": int(to_date),
         "groups": groups,

@@ -598,6 +598,10 @@ def keyword_view():
         to_date = end_date.strftime("%Y%m%d")
 
         keywords = fetch_keywords_from_clevertap(from_date, to_date)
+        # print(keywords, "keysssz")
+        # Remove the key '-1'
+        if "-1" in keywords:
+            del keywords["-1"]
         if keywords:
             display_wordcloud(keywords)
             df = convert_to_dataframe(keywords)

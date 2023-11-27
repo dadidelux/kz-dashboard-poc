@@ -15,36 +15,39 @@ load_dotenv()
 
 
 def create_gauge_with_color_and_data(week_values, total_value=7000):
-    # Calculate cumulative values and percentages
+    # Calculate the total of the weekly values
+    total_week_values = sum(week_values)
+    # Calculate percentages based on individual weekly values
+    percentages = [round((value / total_value) * 100, 2) for value in week_values]
     cumulative_values = [sum(week_values[: i + 1]) for i in range(len(week_values))]
     percentages = [round((value / total_value) * 100, 2) for value in cumulative_values]
 
-    # Create gauge figure with RGBA color based on percentages
+    # Create gauge figure with RGBA color based on individual weekly values
     fig = go.Figure(
         go.Indicator(
             number=dict(font=dict(size=20)),
             mode="gauge+number",
-            value=cumulative_values[-1],
+            value=total_week_values,
             domain={"x": [0, 1], "y": [0, 1]},
-            title={"text": "Actual 4-Week Progress (%)", "font": {"size": 24}},
+            title={"text": "Actual Weekly Progress (%)", "font": {"size": 24}},
             gauge={
                 "axis": {"range": [None, total_value], "tickcolor": "darkblue"},
                 "bar": {"color": "darkblue"},
                 "steps": [
                     {
-                        "range": [0, cumulative_values[0]],
-                        "color": f"rgba(0, 255, 0, {percentages[0]/100})",
+                        "range": [0, week_values[0]],
+                        "color": f"rgba(0, 255, 0, 1)",
                     },
                     {
-                        "range": [cumulative_values[0], cumulative_values[1]],
+                        "range": [week_values[0], sum(week_values[:2])],
                         "color": f"rgba(0, 0, 255, {percentages[1]/100})",
                     },
                     {
-                        "range": [cumulative_values[1], cumulative_values[2]],
+                        "range": [sum(week_values[:2]), sum(week_values[:3])],
                         "color": f"rgba(255, 0, 0, {percentages[2]/100})",
                     },
                     {
-                        "range": [cumulative_values[2], cumulative_values[3]],
+                        "range": [sum(week_values[:3]), sum(week_values)],
                         "color": f"rgba(255, 255, 0, {percentages[3]/100})",
                     },
                 ],
@@ -52,20 +55,24 @@ def create_gauge_with_color_and_data(week_values, total_value=7000):
         )
     )
 
-    # Adding annotations for cumulative values
-    for i, cv in enumerate(cumulative_values):
+    # Adding annotations for weekly values
+    for i, value in enumerate(week_values):
         fig.add_annotation(
             x=0.5,
             y=0.5 - (0.1 * i),
             xref="paper",
             yref="paper",
-            text=f"Week {i+1}: {cv} ({percentages[i]}%)",
+            text=f"Week {i+1}: {value} ({percentages[i]}%)",
             showarrow=False,
         )
 
     # Calculate trend arrow and color based on the last two weeks
-    trend_arrow = "↑" if week_values[-1] >= week_values[-2] else "↓"
-    trend_color = "green" if trend_arrow == "↑" else "red"
+    if len(week_values) > 1:
+        trend_arrow = "↑" if week_values[-1] >= week_values[-2] else "↓"
+        trend_color = "green" if trend_arrow == "↑" else "red"
+    else:
+        trend_arrow = ""
+        trend_color = "black"
 
     # Adding trend arrow annotation
     fig.add_annotation(
@@ -82,6 +89,77 @@ def create_gauge_with_color_and_data(week_values, total_value=7000):
         paper_bgcolor="lavender", font={"color": "darkblue", "family": "Arial"}
     )
     return fig
+
+
+# def create_gauge_with_color_and_data(week_values, total_value=7000):
+#     # Calculate cumulative values and percentages
+#     #cumulative_values = [sum(week_values[: i + 1]) for i in range(len(week_values))]
+#     cumulative_values = [1201, 1024, 894, 913]
+#     percentages = [round((value / total_value) * 100, 2) for value in cumulative_values]
+
+#     # Create gauge figure with RGBA color based on percentages
+#     fig = go.Figure(
+#         go.Indicator(
+#             number=dict(font=dict(size=20)),
+#             mode="gauge+number",
+#             value=cumulative_values[-1],
+#             domain={"x": [0, 1], "y": [0, 1]},
+#             title={"text": "Actual 4-Week Progress (%)", "font": {"size": 24}},
+#             gauge={
+#                 "axis": {"range": [None, total_value], "tickcolor": "darkblue"},
+#                 "bar": {"color": "darkblue"},
+#                 "steps": [
+#                     {
+#                         "range": [0, cumulative_values[0]],
+#                         "color": f"rgba(0, 255, 0, {percentages[0]/100})",
+#                     },
+#                     {
+#                         "range": [cumulative_values[0], cumulative_values[1]],
+#                         "color": f"rgba(0, 0, 255, {percentages[1]/100})",
+#                     },
+#                     {
+#                         "range": [cumulative_values[1], cumulative_values[2]],
+#                         "color": f"rgba(255, 0, 0, {percentages[2]/100})",
+#                     },
+#                     {
+#                         "range": [cumulative_values[2], cumulative_values[3]],
+#                         "color": f"rgba(255, 255, 0, {percentages[3]/100})",
+#                     },
+#                 ],
+#             },
+#         )
+#     )
+
+#     # Adding annotations for weekly values
+#     for i, value in enumerate(week_values):
+#         fig.add_annotation(
+#             x=0.5,
+#             y=0.5 - (0.1 * i),
+#             xref="paper",
+#             yref="paper",
+#             text=f"Week {i+1}: {value} ({percentages[i]}%)",
+#             showarrow=False,
+#         )
+
+#     # Calculate trend arrow and color based on the last two weeks
+#     trend_arrow = "↑" if week_values[-1] >= week_values[-2] else "↓"
+#     trend_color = "green" if trend_arrow == "↑" else "red"
+
+#     # Adding trend arrow annotation
+#     fig.add_annotation(
+#         x=0.5,
+#         y=-0.2,
+#         xref="paper",
+#         yref="paper",
+#         text=f"Trend: {trend_arrow}",
+#         font={"color": trend_color, "size": 18},
+#         showarrow=False,
+#     )
+
+#     fig.update_layout(
+#         paper_bgcolor="lavender", font={"color": "darkblue", "family": "Arial"}
+#     )
+#     return fig
 
 
 image = "kidzapp-logo.png"  # Replace with the actual path to your image

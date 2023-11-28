@@ -803,10 +803,128 @@ def experience_view():
         display_horizontal_bar_chart(data)
 
 
+# ============================================================================= the viewer =================================================================
+
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import datetime
+import sqlalchemy
+
+
+# Function to create a database connection
+def get_connection():
+    # Replace with your actual database details
+    db_type = st.secrets["db_type"]
+    username = st.secrets["username"]
+    password = st.secrets["password"]
+    database_name = st.secrets["database_name"]
+    host = st.secrets["host"]
+
+    return sqlalchemy.create_engine(
+        f"{db_type}://{username}:{password}@{host}/{database_name}"
+    )
+
+
+@st.cache_data
+def create_query(start_date, end_date):
+    query_parts = ["SELECT pp.name AS provider_name"]
+
+    # Initialize the current_date as start_date
+    current_date = start_date
+    week_count = 1
+
+    while current_date <= end_date:
+        week_end = current_date + datetime.timedelta(days=6)
+        if week_end > end_date:
+            week_end = end_date
+
+        # Adding each COUNT clause with a leading comma
+        query_parts.append(
+            f", COUNT(CASE WHEN bb.created_at BETWEEN '{current_date}' AND '{week_end}' THEN 1 END) AS week_{week_count}_count"
+        )
+
+        # Update current_date to the next period
+        current_date = week_end + datetime.timedelta(days=1)
+        week_count += 1
+
+    # Adding the remaining part of the SQL query
+    query_parts.append(
+        f"""
+    FROM
+        booking_booking bb
+    JOIN
+        experiences_experience ee ON bb.experience_id = ee.id
+    JOIN
+        provider_provider pp ON ee.provider_id = pp.id
+    JOIN
+        core_city cc ON ee.city_id = cc.id
+    JOIN
+        core_country co ON cc.country_id = co.id
+    WHERE
+        bb.payment_status = 'CAPTURED'
+        AND co.name = 'United Arab Emirates'
+        AND bb.created_at BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY
+        pp.name
+    ORDER BY
+        pp.name
+    """
+    )
+
+    return " ".join(query_parts)
+
+
+def analyze_booking_view():
+    # Streamlit UI
+    st.title("Weekly Booking Analysis")
+
+    start_date = st.date_input(
+        "Start Date", datetime.date.today() - datetime.timedelta(days=30)
+    )
+    end_date = st.date_input("End Date", datetime.date.today())
+
+    if st.button('Analyze Bookings'):
+        query = create_query(start_date, end_date)
+        conn = get_connection()
+        data = pd.read_sql(query, conn)
+
+        # Prepare the data for plotting
+        weeks = ['week_1_count', 'week_2_count', 'week_3_count', 'week_4_count']
+
+        # Sum up the bookings for each week
+        total_bookings_per_week = data[weeks].sum()
+
+        # Plotting
+        fig, ax = plt.subplots()
+
+        # Cumulative sum for stacking
+        cumulative = total_bookings_per_week.cumsum()
+
+        # We start with the last week so it appears at the base of the stack
+        for i in range(len(weeks) - 1, -1, -1):
+            left = cumulative[i] - total_bookings_per_week[i]
+            ax.barh('Total Bookings', total_bookings_per_week[i], left=left, label=weeks[i])
+
+            # Add data label
+            label_position = left + total_bookings_per_week[i] / 2
+            ax.text(label_position, 0, total_bookings_per_week[i], va='center')
+
+        ax.set_title('Cumulative Total Bookings by Week')
+        ax.set_xlabel('Total Bookings')
+        ax.legend()
+
+        # Display the chart in Streamlit
+        st.pyplot(fig)
+
+
+# ============================================================================= SIDE BAR MENU =================================================================
+
 page_names_to_funcs = {
     "Experience View": experience_view,
     "Keyword View": keyword_view,
     "Trend View ": trend_indicator_view,
+    "Analyze Booking View ": analyze_booking_view,
 }
 
 demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())

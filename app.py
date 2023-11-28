@@ -884,13 +884,13 @@ def analyze_booking_view():
     )
     end_date = st.date_input("End Date", datetime.date.today())
 
-    if st.button('Analyze Bookings'):
+    if st.button("Analyze Bookings"):
         query = create_query(start_date, end_date)
         conn = get_connection()
         data = pd.read_sql(query, conn)
 
         # Prepare the data for plotting
-        weeks = ['week_1_count', 'week_2_count', 'week_3_count', 'week_4_count']
+        weeks = ["week_1_count", "week_2_count", "week_3_count", "week_4_count"]
 
         # Sum up the bookings for each week
         total_bookings_per_week = data[weeks].sum()
@@ -904,18 +904,22 @@ def analyze_booking_view():
         # We start with the last week so it appears at the base of the stack
         for i in range(len(weeks) - 1, -1, -1):
             left = cumulative[i] - total_bookings_per_week[i]
-            ax.barh('Total Bookings', total_bookings_per_week[i], left=left, label=weeks[i])
+            ax.barh(
+                "Total Bookings", total_bookings_per_week[i], left=left, label=weeks[i]
+            )
 
             # Add data label
             label_position = left + total_bookings_per_week[i] / 2
-            ax.text(label_position, 0, total_bookings_per_week[i], va='center')
+            ax.text(label_position, 0, total_bookings_per_week[i], va="center")
 
-        ax.set_title('Cumulative Total Bookings by Week')
-        ax.set_xlabel('Total Bookings')
+        ax.set_title("Cumulative Total Bookings by Week")
+        ax.set_xlabel("Total Bookings")
         ax.legend()
 
         # Display the chart in Streamlit
         st.pyplot(fig)
+        # Display the DataFrame (optional)
+        st.write(data)
 
 
 # ============================================================================= SIDE BAR MENU =================================================================

@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.express as px
 from dotenv import load_dotenv
 import numpy as np
+import calendar
 
 import requests
 import os
@@ -884,8 +885,41 @@ def create_query(start_date, end_date, previous_year=False):
 def analyze_booking_view():
     st.title("Weekly Booking Analysis")
 
-    start_date = st.date_input("Start Date", datetime.date.today() - datetime.timedelta(days=30))
-    end_date = st.date_input("End Date", datetime.date.today())
+    # Allow the user to select from the years 2022 and 2023 only
+    analysis_year = st.selectbox("Select the year for analysis", [2023, 2022, 2021])
+
+    # Calculate dates for the selected year
+    jan_1 = datetime.date(analysis_year, 1, 1)
+    dec_31 = datetime.date(analysis_year, 12, 31)
+
+    # Set default dates for the date input
+    today = datetime.date.today()
+    default_start_date = today if jan_1 <= today <= dec_31 else jan_1
+    default_end_date = default_start_date + datetime.timedelta(days=6)
+
+    # User selects vacation dates for the selected year
+    vacation_dates = st.date_input(
+        "Select your dates",
+        (default_start_date, default_end_date),
+        min_value=jan_1,
+        max_value=dec_31,
+        format="MM.DD.YYYY",
+    )
+
+    # Check if the returned value is a tuple with two dates
+    if not isinstance(vacation_dates, tuple) or len(vacation_dates) != 2:
+        st.warning("Please complete the date range.")
+        return  # Exit the function
+
+    # Extract start and end dates from the selected range
+    start_date, end_date = vacation_dates
+
+    # Check if start and end dates are in the same month
+    if start_date.month != end_date.month or start_date.year != end_date.year:
+        st.warning(
+            "Start and End dates must be in the same month. Please adjust the dates."
+        )
+        return  # Exit the function if dates are not in the same month
 
     if st.button("Analyze Bookings"):
         # Queries for current and previous year
@@ -904,7 +938,9 @@ def analyze_booking_view():
         colors = ["red", "green", "orange", "blue"]
 
         # Specific values to add as a stacked column (weekly target)
-        specific_values_wk_target = np.array([1166, 1166, 1166, 1166])  # Converted to numpy array
+        specific_values_wk_target = np.array(
+            [1166, 1166, 1166, 1166]
+        )  # Converted to numpy array
 
         # Plotting
         fig, ax = plt.subplots()
@@ -922,22 +958,39 @@ def analyze_booking_view():
                     bar_width,
                     left=left,
                     color=colors[i],
-                    label=weeks[i] if ypos == 2 else ""
+                    label=weeks[i] if ypos == 2 else "",
                 )
 
                 # Add text label inside each bar segment
                 text_x_position = left + bar_width / 2
-                ax.text(text_x_position, ypos, f"{bar_width}", va='center', ha='center', color='white')
+                ax.text(
+                    text_x_position,
+                    ypos,
+                    f"{bar_width}",
+                    va="center",
+                    ha="center",
+                    color="white",
+                )
 
         # Plotting data for current year, previous year, and weekly target
-        plot_data(pd.DataFrame({wk: [specific_values_wk_target[i]] for i, wk in enumerate(weeks)}), 2)
+        plot_data(
+            pd.DataFrame(
+                {wk: [specific_values_wk_target[i]] for i, wk in enumerate(weeks)}
+            ),
+            2,
+        )
         plot_data(data_current_year, 1)
         plot_data(data_previous_year, 0)
 
         # Set the chart title, labels, and legend
-        ax.set_title("Cumulative Total Bookings by Week: Weekly Target, Current Year, and Previous Year")
+        month_name = calendar.month_name[start_date.month]
+        ax.set_title(
+            f"Cumulative Total Bookings by Week for {month_name} {start_date.year}: Weekly Target, Current Year, and Previous Year"
+        )
         ax.set_xlabel("Total Bookings")
-        ax.set_yticks([0, 1, 2], labels=["Previous Year", "Current Year", "Weekly Target"])
+        ax.set_yticks(
+            [0, 1, 2], labels=["Previous Year", "Current Year", "Weekly Target"]
+        )
         ax.legend()
 
         # Display the chart in Streamlit
@@ -948,7 +1001,6 @@ def analyze_booking_view():
         st.write(data_current_year)
         st.write("Previous Year Data:")
         st.write(data_previous_year)
-
 
 
 # ============================================================================= SIDE BAR MENU =================================================================

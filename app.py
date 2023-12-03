@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import plotly.express as px
 from dotenv import load_dotenv
+import numpy as np
 
 import requests
 import os
@@ -827,8 +828,13 @@ def get_connection():
 
 
 @st.cache_data
-def create_query(start_date, end_date):
+def create_query(start_date, end_date, previous_year=False):
     query_parts = ["SELECT pp.name AS provider_name"]
+
+    # Calculate the start and end dates for the previous year if required
+    if previous_year:
+        start_date = start_date.replace(year=start_date.year - 1)
+        end_date = end_date.replace(year=end_date.year - 1)
 
     # Initialize the current_date as start_date
     current_date = start_date
@@ -876,7 +882,6 @@ def create_query(start_date, end_date):
 
 
 def analyze_booking_view():
-    # Streamlit UI
     st.title("Weekly Booking Analysis")
 
     start_date = st.date_input(
@@ -885,52 +890,83 @@ def analyze_booking_view():
     end_date = st.date_input("End Date", datetime.date.today())
 
     if st.button("Analyze Bookings"):
-        query = create_query(start_date, end_date)
+        # Queries for current and previous year
+        query_current_year = create_query(start_date, end_date)
+        query_previous_year = create_query(start_date, end_date, previous_year=True)
+
+        # Database connection
         conn = get_connection()
-        data = pd.read_sql(query, conn)
 
-        # Prepare the data for plotting
+        # Retrieve data for current and previous year
+        data_current_year = pd.read_sql(query_current_year, conn)
+        data_previous_year = pd.read_sql(query_previous_year, conn)
+
+        # Define weeks and colors
         weeks = ["week_1_count", "week_2_count", "week_3_count", "week_4_count"]
+        colors = ["red", "green", "orange", "blue"]
 
-        # Sum up the bookings for each week
-        total_bookings_per_week = data[weeks].sum()
+        # Specific values to add as a stacked column (weekly target)
+        specific_values_wk_target = np.array(
+            [1166, 1166, 1166, 1166]
+        )  # Converted to numpy array
 
         # Plotting
         fig, ax = plt.subplots()
 
-        # Cumulative sum for stacking
-        cumulative = total_bookings_per_week.cumsum()
+        # Plotting function for each data set
+        def plot_data(data, ypos):
+            total_bookings_per_week = data[weeks].sum()
+            cumulative = total_bookings_per_week.cumsum()
 
-        # We start with the last week so it appears at the base of the stack
-        for i in range(len(weeks) - 1, -1, -1):
-            left = cumulative[i] - total_bookings_per_week[i]
-            ax.barh(
-                "Total Bookings", total_bookings_per_week[i], left=left, label=weeks[i]
-            )
+            for i in range(len(weeks)):
+                left = 0 if i == 0 else cumulative[i - 1]
+                ax.barh(
+                    ypos,
+                    total_bookings_per_week[i],
+                    left=left,
+                    color=colors[i],
+                    label=weeks[i] if ypos == 2 else "",
+                )
 
-            # Add data label
-            label_position = left + total_bookings_per_week[i] / 2
-            ax.text(label_position, 0, total_bookings_per_week[i], va="center")
+        # Plotting data for current year, previous year, and weekly target
+        plot_data(
+            pd.DataFrame(
+                {wk: [specific_values_wk_target[i]] for i, wk in enumerate(weeks)}
+            ),
+            2,
+        )
+        plot_data(data_current_year, 1)
+        plot_data(data_previous_year, 0)
 
-        ax.set_title("Cumulative Total Bookings by Week")
+        # Set the chart title, labels, and legend
+        ax.set_title(
+            "Cumulative Total Bookings by Week: Weekly Target, Current Year, and Previous Year"
+        )
         ax.set_xlabel("Total Bookings")
+        ax.set_yticks(
+            [0, 1, 2], labels=["Previous Year", "Current Year", "Weekly Target"]
+        )
         ax.legend()
 
         # Display the chart in Streamlit
         st.pyplot(fig)
+
         # Display the DataFrame (optional)
-        st.write(data)
+        st.write("Current Year Data:")
+        st.write(data_current_year)
+        st.write("Previous Year Data:")
+        st.write(data_previous_year)
 
 
 # ============================================================================= SIDE BAR MENU =================================================================
 
 page_names_to_funcs = {
+    "Analyze Booking View ": analyze_booking_view,
     "Experience View": experience_view,
     "Keyword View": keyword_view,
     "Trend View ": trend_indicator_view,
-    "Analyze Booking View ": analyze_booking_view,
 }
 
-demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
+demo_name = st.sidebar.selectbox("Choose a dashboard", page_names_to_funcs.keys())
 st.sidebar.write("To view the other pages scroll the content down ➡️")
 page_names_to_funcs[demo_name]()

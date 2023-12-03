@@ -884,9 +884,7 @@ def create_query(start_date, end_date, previous_year=False):
 def analyze_booking_view():
     st.title("Weekly Booking Analysis")
 
-    start_date = st.date_input(
-        "Start Date", datetime.date.today() - datetime.timedelta(days=30)
-    )
+    start_date = st.date_input("Start Date", datetime.date.today() - datetime.timedelta(days=30))
     end_date = st.date_input("End Date", datetime.date.today())
 
     if st.button("Analyze Bookings"):
@@ -906,9 +904,7 @@ def analyze_booking_view():
         colors = ["red", "green", "orange", "blue"]
 
         # Specific values to add as a stacked column (weekly target)
-        specific_values_wk_target = np.array(
-            [1166, 1166, 1166, 1166]
-        )  # Converted to numpy array
+        specific_values_wk_target = np.array([1166, 1166, 1166, 1166])  # Converted to numpy array
 
         # Plotting
         fig, ax = plt.subplots()
@@ -920,32 +916,28 @@ def analyze_booking_view():
 
             for i in range(len(weeks)):
                 left = 0 if i == 0 else cumulative[i - 1]
-                ax.barh(
+                bar_width = total_bookings_per_week[i]
+                bar = ax.barh(
                     ypos,
-                    total_bookings_per_week[i],
+                    bar_width,
                     left=left,
                     color=colors[i],
-                    label=weeks[i] if ypos == 2 else "",
+                    label=weeks[i] if ypos == 2 else ""
                 )
 
+                # Add text label inside each bar segment
+                text_x_position = left + bar_width / 2
+                ax.text(text_x_position, ypos, f"{bar_width}", va='center', ha='center', color='white')
+
         # Plotting data for current year, previous year, and weekly target
-        plot_data(
-            pd.DataFrame(
-                {wk: [specific_values_wk_target[i]] for i, wk in enumerate(weeks)}
-            ),
-            2,
-        )
+        plot_data(pd.DataFrame({wk: [specific_values_wk_target[i]] for i, wk in enumerate(weeks)}), 2)
         plot_data(data_current_year, 1)
         plot_data(data_previous_year, 0)
 
         # Set the chart title, labels, and legend
-        ax.set_title(
-            "Cumulative Total Bookings by Week: Weekly Target, Current Year, and Previous Year"
-        )
+        ax.set_title("Cumulative Total Bookings by Week: Weekly Target, Current Year, and Previous Year")
         ax.set_xlabel("Total Bookings")
-        ax.set_yticks(
-            [0, 1, 2], labels=["Previous Year", "Current Year", "Weekly Target"]
-        )
+        ax.set_yticks([0, 1, 2], labels=["Previous Year", "Current Year", "Weekly Target"])
         ax.legend()
 
         # Display the chart in Streamlit
@@ -956,6 +948,7 @@ def analyze_booking_view():
         st.write(data_current_year)
         st.write("Previous Year Data:")
         st.write(data_previous_year)
+
 
 
 # ============================================================================= SIDE BAR MENU =================================================================

@@ -15,6 +15,18 @@ import matplotlib.pyplot as plt
 
 load_dotenv()
 
+st.set_page_config(
+    page_title="kidzapp dashboard",  # Set your app title here
+    page_icon="📊",  # You can also set an emoji or an image as an icon
+    layout="wide",  # Optional: Use 'wide' layout
+    initial_sidebar_state="expanded",  # Optional: Expand or collapse the sidebar
+    menu_items={
+        "Get Help": "https://www.extremelycoolapp.com/help",
+        "Report a bug": "https://www.extremelycoolapp.com/bug",
+        "About": "# This is a very cool app!",  # You can also set your own About text or link
+    },
+)
+
 
 def create_gauge_with_color_and_data(week_values, total_value=7000):
     # Calculate the total of the weekly values
@@ -93,131 +105,59 @@ def create_gauge_with_color_and_data(week_values, total_value=7000):
     return fig
 
 
-# def create_gauge_with_color_and_data(week_values, total_value=7000):
-#     # Calculate cumulative values and percentages
-#     #cumulative_values = [sum(week_values[: i + 1]) for i in range(len(week_values))]
-#     cumulative_values = [1201, 1024, 894, 913]
-#     percentages = [round((value / total_value) * 100, 2) for value in cumulative_values]
+def test_view():
+    image = "kidzapp-logo.png"  # Replace with the actual path to your image
+    st.image(
+        image,
+        width=200,  # Adjust the width to your desired size
+    )
+    # Streamlit app
+    st.title("Kidzapp Weekly Dashboard")
 
-#     # Create gauge figure with RGBA color based on percentages
-#     fig = go.Figure(
-#         go.Indicator(
-#             number=dict(font=dict(size=20)),
-#             mode="gauge+number",
-#             value=cumulative_values[-1],
-#             domain={"x": [0, 1], "y": [0, 1]},
-#             title={"text": "Actual 4-Week Progress (%)", "font": {"size": 24}},
-#             gauge={
-#                 "axis": {"range": [None, total_value], "tickcolor": "darkblue"},
-#                 "bar": {"color": "darkblue"},
-#                 "steps": [
-#                     {
-#                         "range": [0, cumulative_values[0]],
-#                         "color": f"rgba(0, 255, 0, {percentages[0]/100})",
-#                     },
-#                     {
-#                         "range": [cumulative_values[0], cumulative_values[1]],
-#                         "color": f"rgba(0, 0, 255, {percentages[1]/100})",
-#                     },
-#                     {
-#                         "range": [cumulative_values[1], cumulative_values[2]],
-#                         "color": f"rgba(255, 0, 0, {percentages[2]/100})",
-#                     },
-#                     {
-#                         "range": [cumulative_values[2], cumulative_values[3]],
-#                         "color": f"rgba(255, 255, 0, {percentages[3]/100})",
-#                     },
-#                 ],
-#             },
-#         )
-#     )
+    # Weekly values
+    week_values = [1201, 1024, 894, 913]  # Values for each week
+    gauge_chart = create_gauge_with_color_and_data(week_values)
 
-#     # Adding annotations for weekly values
-#     for i, value in enumerate(week_values):
-#         fig.add_annotation(
-#             x=0.5,
-#             y=0.5 - (0.1 * i),
-#             xref="paper",
-#             yref="paper",
-#             text=f"Week {i+1}: {value} ({percentages[i]}%)",
-#             showarrow=False,
-#         )
+    st.plotly_chart(gauge_chart)
 
-#     # Calculate trend arrow and color based on the last two weeks
-#     trend_arrow = "↑" if week_values[-1] >= week_values[-2] else "↓"
-#     trend_color = "green" if trend_arrow == "↑" else "red"
+    # Display legend with trend arrows
+    st.write("### Legend")
+    for i, value in enumerate(week_values):
+        trend_arrow = "↑" if i == 0 or week_values[i] >= week_values[i - 1] else "↓"
+        trend_color = "green" if trend_arrow == "↑" else "red"
+        colored_text = f'<span style="color: {trend_color};">Week {i+1}: {value} ({trend_arrow})</span>'
+        st.markdown(colored_text, unsafe_allow_html=True)
 
-#     # Adding trend arrow annotation
-#     fig.add_annotation(
-#         x=0.5,
-#         y=-0.2,
-#         xref="paper",
-#         yref="paper",
-#         text=f"Trend: {trend_arrow}",
-#         font={"color": trend_color, "size": 18},
-#         showarrow=False,
-#     )
+    # Data
+    week_values = [1201, 1024, 894, 913]
+    weekly_target = [1166, 1166, 1166, 1166]
+    lastyear_target = [831, 708, 665, 605]
 
-#     fig.update_layout(
-#         paper_bgcolor="lavender", font={"color": "darkblue", "family": "Arial"}
-#     )
-#     return fig
+    # Create a DataFrame for plotting
+    df = pd.DataFrame(
+        {
+            "Week": range(1, len(week_values) + 1),
+            "Weekly Target": weekly_target,
+            "Actual Values": week_values,
+            "Last Year Target": lastyear_target,
+        }
+    )
 
-
-image = "kidzapp-logo.png"  # Replace with the actual path to your image
-st.image(
-    image,
-    width=200,  # Adjust the width to your desired size
-)
-# Streamlit app
-st.title("Kidzapp Weekly Dashboard")
-
-# Weekly values
-week_values = [1201, 1024, 894, 913]  # Values for each week
-gauge_chart = create_gauge_with_color_and_data(week_values)
-
-st.plotly_chart(gauge_chart)
-
-# Display legend with trend arrows
-st.write("### Legend")
-for i, value in enumerate(week_values):
-    trend_arrow = "↑" if i == 0 or week_values[i] >= week_values[i - 1] else "↓"
-    trend_color = "green" if trend_arrow == "↑" else "red"
-    colored_text = f'<span style="color: {trend_color};">Week {i+1}: {value} ({trend_arrow})</span>'
-    st.markdown(colored_text, unsafe_allow_html=True)
-
-
-# Data
-week_values = [1201, 1024, 894, 913]
-weekly_target = [1166, 1166, 1166, 1166]
-lastyear_target = [831, 708, 665, 605]
-
-# Create a DataFrame for plotting
-df = pd.DataFrame(
-    {
-        "Week": range(1, len(week_values) + 1),
-        "Weekly Target": weekly_target,
-        "Actual Values": week_values,
-        "Last Year Target": lastyear_target,
-    }
-)
-
-# Create a clustered bar chart
-fig = px.bar(
-    df,
-    x="Week",
-    y=["Actual Values", "Weekly Target", "Last Year Target"],
-    labels={"value": "Values"},
-    title="Comparison of Actual to Weekly and Last Year Booking Count",
-    barmode="group",
-)  # Use 'group' for clustered bars
-fig.update_layout(xaxis_title="Week", yaxis_title="Values")
-st.plotly_chart(fig)
+    # Create a clustered bar chart
+    fig = px.bar(
+        df,
+        x="Week",
+        y=["Actual Values", "Weekly Target", "Last Year Target"],
+        labels={"value": "Values"},
+        title="Comparison of Actual to Weekly and Last Year Booking Count",
+        barmode="group",
+    )  # Use 'group' for clustered bars
+    fig.update_layout(xaxis_title="Week", yaxis_title="Values")
+    st.plotly_chart(fig)
 
 
 def trend_indicator_view():
-    import streamlit as st
-    import pandas as pd
+   
 
     # Define the data with padding for missing values
     data = {
@@ -1019,6 +959,7 @@ page_names_to_funcs = {
     "Experience View": experience_view,
     "Keyword View": keyword_view,
     "Trend View ": trend_indicator_view,
+    "Test View ": test_view,
 }
 
 demo_name = st.sidebar.selectbox("Choose a dashboard", page_names_to_funcs.keys())

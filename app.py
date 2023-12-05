@@ -933,8 +933,17 @@ def analyze_booking_view():
         data_current_year = pd.read_sql(query_current_year, conn)
         data_previous_year = pd.read_sql(query_previous_year, conn)
 
-        # Define weeks and colors
+        # Define weeks
         weeks = ["week_1_count", "week_2_count", "week_3_count", "week_4_count"]
+
+        # Ensure all week columns exist and set default values if missing
+        for week in weeks:
+            if week not in data_current_year.columns:
+                data_current_year[week] = 0
+            if week not in data_previous_year.columns:
+                data_previous_year[week] = 0
+
+        # Define colors
         colors = ["red", "green", "orange", "blue"]
 
         # Specific values to add as a stacked column (weekly target)

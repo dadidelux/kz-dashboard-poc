@@ -884,7 +884,7 @@ def analyze_booking_view():
                 data_previous_year[week] = 0
 
         # Define colors
-        colors = ["red", "green", "orange", "blue"]
+        colors = ["green", "darkorange", "lightgray", "orange"]
 
         # Specific values to add as a stacked column (weekly target)
         specific_values_wk_target = np.array(

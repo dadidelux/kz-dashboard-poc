@@ -938,7 +938,7 @@ def analyze_booking_view():
         )
         ax.set_xlabel("Total Bookings")
         ax.set_yticks(
-            [0, 1, 2], labels=["Previous Year", "Current Year", "Weekly Target"]
+            [0, 1, 2], labels=["Last Year", "Actual Year", "Weekly Target"]
         )
         ax.legend()
 
@@ -946,9 +946,9 @@ def analyze_booking_view():
         st.pyplot(fig)
 
         # Display the DataFrame (optional)
-        st.write("Current Year Data:")
+        st.write("Actual Year Data:")
         st.write(data_current_year)
-        st.write("Previous Year Data:")
+        st.write("Last Year Data:")
         st.write(data_previous_year)
 
 

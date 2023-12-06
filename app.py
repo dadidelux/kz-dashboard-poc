@@ -157,8 +157,6 @@ def test_view():
 
 
 def trend_indicator_view():
-   
-
     # Define the data with padding for missing values
     data = {
         "Provider": [
@@ -937,9 +935,7 @@ def analyze_booking_view():
             f"Cumulative Total Bookings by Week for {month_name} {start_date.year}: Weekly Target, Current Year, and Previous Year"
         )
         ax.set_xlabel("Total Bookings")
-        ax.set_yticks(
-            [0, 1, 2], labels=["Last Year", "Actual Year", "Weekly Target"]
-        )
+        ax.set_yticks([0, 1, 2], labels=["Last Year", "Actual Year", "Weekly Target"])
         ax.legend()
 
         # Display the chart in Streamlit
@@ -952,10 +948,215 @@ def analyze_booking_view():
         st.write(data_previous_year)
 
 
+# ================================================================SEC
+
+import datetime
+from datetime import timedelta
+
+
+def create_query_sec(start_date, end_date, previous_year=False):
+    query_parts = []
+
+    # Adjust for previous year if required
+    if previous_year:
+        start_date = start_date.replace(year=start_date.year - 1)
+        end_date = end_date.replace(year=end_date.year - 1)
+
+    current_date = start_date
+    query_count = []  # Create a list to store COUNT statements
+
+    while current_date <= end_date:
+        week_start = current_date
+        week_end = week_start + timedelta(days=6)
+        if week_end > end_date:
+            week_end = end_date
+
+        # Format week label as "MMM DD - MMM DD"
+        week_label = f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}"
+
+        query_count.append(
+            f"COUNT(CASE WHEN bb.created_at BETWEEN '{week_start}' AND '{week_end}' THEN 1 END) AS \"{week_label}\""
+        )
+
+        current_date = week_start + timedelta(days=7)  # Move to the next week
+
+    # Join the COUNT statements with commas
+    query_parts.append(", ".join(query_count))
+
+    # Completing the SQL query
+    query_parts.insert(0, "SELECT")
+    query_parts.append(
+        """
+        FROM booking_booking bb
+        WHERE bb.payment_status = 'CAPTURED'
+        AND bb.created_at BETWEEN '{start_date}' AND '{end_date}'
+        """.format(
+            start_date=start_date, end_date=end_date
+        )
+    )
+
+    return " ".join(query_parts)
+
+
+# Main function for analyzing bookings
+def analyze_booking_view_sec():
+    st.title("Weekly Booking Analysis")
+
+    # Allow user to select a year
+    analysis_year = st.selectbox("Select the year for analysis", [2023, 2022, 2021])
+
+    # Calculate dates for the selected year
+    jan_1 = datetime.date(analysis_year, 1, 1)
+    dec_31 = datetime.date(analysis_year, 12, 31)
+
+    # Set default dates for the date input
+    today = datetime.date.today()
+    default_start_date = today if jan_1 <= today <= dec_31 else jan_1
+    default_end_date = default_start_date + datetime.timedelta(days=6)
+
+    # User selects dates
+    vacation_dates = st.date_input(
+        "Select your dates",
+        (default_start_date, default_end_date),
+        min_value=jan_1,
+        max_value=dec_31,
+        format="MM/DD/YYYY",
+    )
+
+    # Check if the returned value is a tuple with two dates
+    if not isinstance(vacation_dates, tuple) or len(vacation_dates) != 2:
+        st.warning("Please complete the date range.")
+        return
+
+    start_date, end_date = vacation_dates
+
+    # Add input fields for editing weekly targets
+    st.subheader("Edit Weekly Targets")
+    max_weeks = 5  # Maximum of 5 weeks
+    weekly_targets_input = [1166] * max_weeks  # Initialize with default values
+
+    for i in range(max_weeks):
+        weekly_targets_input[i] = st.number_input(
+            f"Week {i+1} Target", value=weekly_targets_input[i]
+        )
+
+    if st.button("Analyze Bookings"):
+        # Database connection
+        conn = get_connection()
+
+        # Queries for current and previous year
+        query_current_year = create_query_sec(start_date, end_date)
+        query_previous_year = create_query_sec(start_date, end_date, previous_year=True)
+
+        # Retrieve data for current and previous year
+        data_current_year = pd.read_sql(query_current_year, conn)
+        data_previous_year = pd.read_sql(query_previous_year, conn)
+
+        # Get the dynamic column names for the current and previous year queries
+        columns_current_year = [
+            col for col in data_current_year.columns if " - " in col
+        ]
+        columns_previous_year = [
+            col for col in data_previous_year.columns if " - " in col
+        ]
+
+        # Use only the number of weeks as per the max_weeks variable
+        max_length = min(len(columns_current_year), max_weeks)
+
+        # Create a DataFrame for weekly targets
+        weekly_targets_df = pd.DataFrame({"Targets": weekly_targets_input[:max_length]})
+
+        # Define a set of distinct colors for the weeks
+        week_colors = ["red", "green", "blue", "purple", "orange"]
+        # Plotting
+        # Increase the figure width to accommodate the legend
+        # Increase the figure width to accommodate the legend
+        fig, ax = plt.subplots(figsize=(14, 6))  # Increased width
+
+        # Plotting function for each data set
+        def plot_data(data, ypos, week_labels):
+            cumulative = 0
+            for i, week_label in enumerate(week_labels):
+                week_val = data[week_label].iloc[0] if week_label in data.columns else 0
+                bar = ax.barh(
+                    ypos,
+                    week_val,
+                    left=cumulative,
+                    color=week_colors[i % len(week_colors)],
+                    label=week_label if ypos == 1 else ""  # Label with week range for the legend
+                )
+                cumulative += week_val
+
+                # Adding data value text on each bar segment
+                if week_val > 0:
+                    text_x_position = cumulative - (week_val / 2)  # Center of the bar segment
+                    ax.text(text_x_position, ypos, str(week_val), va='center', color='white')
+
+        # Plotting data for current year, previous year, and weekly target
+        plot_data(data_current_year, 1, columns_current_year)
+        plot_data(data_previous_year, 0, columns_current_year)
+
+        # Adding the weekly target data
+        cumulative_target = 0
+        for i, week_label in enumerate(columns_current_year):
+            target_val = weekly_targets_input[i] if i < len(weekly_targets_input) else 0
+            bar = ax.barh(
+                2,
+                target_val,
+                left=cumulative_target,
+                color=week_colors[i % len(week_colors)]
+            )
+            cumulative_target += target_val
+
+            # Adding target value text on each bar segment
+            if target_val > 0:
+                text_x_position = cumulative_target - (target_val / 2)
+                ax.text(text_x_position, 2, str(target_val), va='center', color='white')
+
+        # Set the chart title, labels, and legend
+        ax.set_title("Weekly Booking Analysis")
+        ax.set_xlabel("Bookings")
+        ax.set_yticks([0, 1, 2], labels=["Last Year", "Current Year", "Weekly Target"])
+
+        # Place the legend outside the plot
+        ax.legend(loc="upper left", bbox_to_anchor=(1, 1), borderaxespad=0.)
+
+        # Adjust layout to ensure the legend and labels are not cut off
+        plt.tight_layout()
+        plt.show()
+
+        # Display the chart in Streamlit
+        st.pyplot(fig)
+
+        # Transpose the weekly_targets_df DataFrame and use the column names from data_current_year
+        weekly_targets_transposed = weekly_targets_df.transpose()
+        weekly_targets_transposed.columns = columns_current_year[
+            : len(weekly_targets_df)
+        ]
+        
+        # Compute the backlog, ignoring weeks where current bookings are zero
+        backlog_per_week = [max(0, target - current) for target, current in zip(weekly_targets_input, data_current_year.iloc[0]) if current > 0]
+        total_backlog = sum(backlog_per_week)
+
+        # Display the backlog in Streamlit
+        # Display the backlog in red using st.markdown
+        st.markdown(f"<span style='color: red'>Total Backlog: {total_backlog}</span>", unsafe_allow_html=True)
+
+        # st.write("Total Backlog:", total_backlog)
+        # Display the transposed weekly targets with the same column names as current year data
+        st.write("Weekly Target Data:")
+        st.write(weekly_targets_transposed)
+        st.write("Current Year Data:")
+        st.write(data_current_year)
+        st.write("Last Year Data:")
+        st.write(data_previous_year)
+
+
 # ============================================================================= SIDE BAR MENU =================================================================
 
 page_names_to_funcs = {
     "Analyze Booking View ": analyze_booking_view,
+    "Analyze Booking View Ver2": analyze_booking_view_sec,
     "Experience View": experience_view,
     "Keyword View": keyword_view,
     "Trend View ": trend_indicator_view,

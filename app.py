@@ -1083,14 +1083,20 @@ def analyze_booking_view_sec():
                     week_val,
                     left=cumulative,
                     color=week_colors[i % len(week_colors)],
-                    label=week_label if ypos == 1 else ""  # Label with week range for the legend
+                    label=week_label
+                    if ypos == 1
+                    else "",  # Label with week range for the legend
                 )
                 cumulative += week_val
 
                 # Adding data value text on each bar segment
                 if week_val > 0:
-                    text_x_position = cumulative - (week_val / 2)  # Center of the bar segment
-                    ax.text(text_x_position, ypos, str(week_val), va='center', color='white')
+                    text_x_position = cumulative - (
+                        week_val / 2
+                    )  # Center of the bar segment
+                    ax.text(
+                        text_x_position, ypos, str(week_val), va="center", color="white"
+                    )
 
         # Plotting data for current year, previous year, and weekly target
         plot_data(data_current_year, 1, columns_current_year)
@@ -1104,14 +1110,14 @@ def analyze_booking_view_sec():
                 2,
                 target_val,
                 left=cumulative_target,
-                color=week_colors[i % len(week_colors)]
+                color=week_colors[i % len(week_colors)],
             )
             cumulative_target += target_val
 
             # Adding target value text on each bar segment
             if target_val > 0:
                 text_x_position = cumulative_target - (target_val / 2)
-                ax.text(text_x_position, 2, str(target_val), va='center', color='white')
+                ax.text(text_x_position, 2, str(target_val), va="center", color="white")
 
         # Set the chart title, labels, and legend
         ax.set_title("Weekly Booking Analysis")
@@ -1119,7 +1125,7 @@ def analyze_booking_view_sec():
         ax.set_yticks([0, 1, 2], labels=["Last Year", "Current Year", "Weekly Target"])
 
         # Place the legend outside the plot
-        ax.legend(loc="upper left", bbox_to_anchor=(1, 1), borderaxespad=0.)
+        ax.legend(loc="upper left", bbox_to_anchor=(1, 1), borderaxespad=0.0)
 
         # Adjust layout to ensure the legend and labels are not cut off
         plt.tight_layout()
@@ -1133,14 +1139,21 @@ def analyze_booking_view_sec():
         weekly_targets_transposed.columns = columns_current_year[
             : len(weekly_targets_df)
         ]
-        
+
         # Compute the backlog, ignoring weeks where current bookings are zero
-        backlog_per_week = [max(0, target - current) for target, current in zip(weekly_targets_input, data_current_year.iloc[0]) if current > 0]
+        backlog_per_week = [
+            max(0, target - current)
+            for target, current in zip(weekly_targets_input, data_current_year.iloc[0])
+            if current > 0
+        ]
         total_backlog = sum(backlog_per_week)
 
         # Display the backlog in Streamlit
         # Display the backlog in red using st.markdown
-        st.markdown(f"<span style='color: red'>Total Backlog: {total_backlog}</span>", unsafe_allow_html=True)
+        st.markdown(
+            f"<span style='color: red'>Total Backlog: {total_backlog}</span>",
+            unsafe_allow_html=True,
+        )
 
         # st.write("Total Backlog:", total_backlog)
         # Display the transposed weekly targets with the same column names as current year data
@@ -1152,6 +1165,165 @@ def analyze_booking_view_sec():
         st.write(data_previous_year)
 
 
+# ============================================================================= NEW Trend View =================================================================
+
+
+# def run_query(start_date, end_date, country):
+#     query = """
+#     SELECT
+#         pp.name AS provider_name,
+#         COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) AS "Previous Week",
+#         COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) AS "Current Week",
+#         CASE
+#             WHEN COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) > COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) THEN 'Trend Up'
+#             WHEN COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) < COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) THEN 'Trend Down'
+#             ELSE 'Same'
+#         END AS Trend
+#     FROM
+#         booking_booking bb
+#     JOIN
+#         experiences_experience ee ON bb.experience_id = ee.id
+#     JOIN
+#         provider_provider pp ON ee.provider_id = pp.id
+#     JOIN
+#         core_country co ON cc.country_id = co.id
+#     WHERE
+#         bb.payment_status = 'CAPTURED'
+#         AND co.name = %s
+#         AND bb.created_at BETWEEN %s AND %s
+#     GROUP BY
+#         pp.name
+#     ORDER BY
+#         pp.name;
+#     """
+
+#     with get_connection() as conn:
+#         return pd.read_sql(
+#             query,
+#             conn,
+#             params=[start_date, end_date] * 4 + [country, start_date, end_date],
+#         )
+
+
+def run_query(start_date, end_date, country="United Arab Emirates"):
+    # Calculating the start and end dates for the previous week
+    prev_week_end = start_date - datetime.timedelta(days=1)
+    prev_week_start = prev_week_end - datetime.timedelta(days=6)
+
+    query = """
+    SELECT 
+        pp.name AS provider_name,
+        COUNT(CASE WHEN bb.created_at BETWEEN %(prev_week_start)s AND %(prev_week_end)s THEN 1 END) AS "prev_week_count",
+        COUNT(CASE WHEN bb.created_at BETWEEN %(current_week_start)s AND %(current_week_end)s THEN 1 END) AS "current_week_count",
+        CASE 
+            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(current_week_start)s AND %(current_week_end)s THEN 1 END) > 
+                 COUNT(CASE WHEN bb.created_at BETWEEN %(prev_week_start)s AND %(prev_week_end)s THEN 1 END) 
+            THEN 'Trend Up'
+            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(current_week_start)s AND %(current_week_end)s THEN 1 END) < 
+                 COUNT(CASE WHEN bb.created_at BETWEEN %(prev_week_start)s AND %(prev_week_end)s THEN 1 END) 
+            THEN 'Trend Down'
+            ELSE 'Same'
+        END AS Trend
+    FROM 
+        booking_booking bb
+    JOIN 
+        experiences_experience ee ON bb.experience_id = ee.id
+    JOIN 
+        provider_provider pp ON ee.provider_id = pp.id
+    JOIN 
+        core_city cc ON ee.city_id = cc.id
+    JOIN 
+        core_country co ON cc.country_id = co.id
+    WHERE 
+        bb.payment_status = 'CAPTURED'
+        AND co.name = %(country)s
+        AND bb.created_at BETWEEN %(prev_week_start)s AND %(current_week_end)s
+    GROUP BY 
+        pp.name
+    ORDER BY 
+        pp.name;
+    """
+
+    params = {
+        "prev_week_start": prev_week_start.strftime("%Y-%m-%d"),
+        "prev_week_end": prev_week_end.strftime("%Y-%m-%d"),
+        "current_week_start": start_date.strftime("%Y-%m-%d"),
+        "current_week_end": end_date.strftime("%Y-%m-%d"),
+        "country": country,
+    }
+
+    engine = get_connection()
+    df = pd.read_sql(query, engine, params=params)
+    return df
+
+
+# def trend_indicator_view_sec():
+#     # Streamlit UI
+#     st.title("Booking Trends Analysis by Country")
+
+#     # Country selection (assuming you want to allow different countries to be selected)
+#     country = st.selectbox(
+#         "Select Country", ["United Arab Emirates"]  # Add more countries as needed
+#     )
+
+#     # Date range picker
+#     start_date, end_date = st.date_input(
+#         "Select the date range",
+#         [datetime.datetime(2023, 10, 31), datetime.datetime(2023, 11, 13)],
+#     )
+
+
+def trend_indicator_view_sec():
+    st.title("Booking Trends Analysis by Country")
+
+    # Country selection (assuming you want to allow different countries to be selected)
+    country = st.selectbox("Select Country", ["United Arab Emirates"])  # Modify as needed
+
+    # Determine today's date and next week's Monday
+    today = datetime.datetime.now().date()
+    next_monday = today + datetime.timedelta((0 - today.weekday()) % 7 + 7)
+
+    # Date range picker with default values set to today and next week's Monday
+    start_date, end_date = st.date_input(
+        "Select the date range", 
+        [today, next_monday]
+    )
+
+    if start_date and end_date and country:
+        # Adjust start_date and end_date to consider the whole days
+        start_date = datetime.datetime.combine(start_date, datetime.time.min)
+        end_date = datetime.datetime.combine(end_date, datetime.time.max)
+
+        df = run_query(start_date, end_date, country)
+
+        # Format the date ranges for column naming
+        prev_week_label = f"{start_date.strftime('%b %d')} - {(end_date - datetime.timedelta(days=7)).strftime('%b %d')} (Previous Week)"
+        current_week_label = f"{(end_date - datetime.timedelta(days=6)).strftime('%b %d')} - {end_date.strftime('%b %d')} (Current Week)"
+
+        # Rename the DataFrame columns
+        df.rename(columns={"prev_week_count": prev_week_label, "current_week_count": current_week_label}, inplace=True)
+
+
+        # Splitting the DataFrame based on the Trend
+        if 'trend' in df.columns:
+            df_trend_up = df[df['trend'] == 'Trend Up']
+            df_trend_down = df[df['trend'] == 'Trend Down']
+            df_trend_same = df[df['trend'] == 'Same']
+
+            # Display each DataFrame under a corresponding header
+            st.header("Trend Up Results")
+            st.dataframe(df_trend_up)
+
+            st.header("Trend Down Results")
+            st.dataframe(df_trend_down)
+
+            st.header("Same Results")
+            st.dataframe(df_trend_same)
+        else:
+            st.error("Error: 'Trend' column not found in the DataFrame.")
+
+
+
 # ============================================================================= SIDE BAR MENU =================================================================
 
 page_names_to_funcs = {
@@ -1159,7 +1331,7 @@ page_names_to_funcs = {
     "Analyze Booking View Ver2": analyze_booking_view_sec,
     "Experience View": experience_view,
     "Keyword View": keyword_view,
-    "Trend View ": trend_indicator_view,
+    "Trend View ": trend_indicator_view_sec,
     "Test View ": test_view,
 }
 

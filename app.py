@@ -1277,17 +1277,16 @@ def trend_indicator_view_sec():
     st.title("Booking Trends Analysis by Country")
 
     # Country selection (assuming you want to allow different countries to be selected)
-    country = st.selectbox("Select Country", ["United Arab Emirates"])  # Modify as needed
+    country = st.selectbox(
+        "Select Country", ["United Arab Emirates"]
+    )  # Modify as needed
 
     # Determine today's date and next week's Monday
     today = datetime.datetime.now().date()
     next_monday = today + datetime.timedelta((0 - today.weekday()) % 7 + 7)
 
     # Date range picker with default values set to today and next week's Monday
-    start_date, end_date = st.date_input(
-        "Select the date range", 
-        [today, next_monday]
-    )
+    start_date, end_date = st.date_input("Select the date range", [today, next_monday])
 
     if start_date and end_date and country:
         # Adjust start_date and end_date to consider the whole days
@@ -1301,14 +1300,19 @@ def trend_indicator_view_sec():
         current_week_label = f"{(end_date - datetime.timedelta(days=6)).strftime('%b %d')} - {end_date.strftime('%b %d')} (Current Week)"
 
         # Rename the DataFrame columns
-        df.rename(columns={"prev_week_count": prev_week_label, "current_week_count": current_week_label}, inplace=True)
-
+        df.rename(
+            columns={
+                "prev_week_count": prev_week_label,
+                "current_week_count": current_week_label,
+            },
+            inplace=True,
+        )
 
         # Splitting the DataFrame based on the Trend
-        if 'trend' in df.columns:
-            df_trend_up = df[df['trend'] == 'Trend Up']
-            df_trend_down = df[df['trend'] == 'Trend Down']
-            df_trend_same = df[df['trend'] == 'Same']
+        if "trend" in df.columns:
+            df_trend_up = df[df["trend"] == "Trend Up"]
+            df_trend_down = df[df["trend"] == "Trend Down"]
+            df_trend_same = df[df["trend"] == "Same"]
 
             # Display each DataFrame under a corresponding header
             st.header("Trend Up Results")
@@ -1323,12 +1327,11 @@ def trend_indicator_view_sec():
             st.error("Error: 'Trend' column not found in the DataFrame.")
 
 
-
 # ============================================================================= SIDE BAR MENU =================================================================
 
 page_names_to_funcs = {
-    "Analyze Booking View ": analyze_booking_view,
-    "Analyze Booking View Ver2": analyze_booking_view_sec,
+    "Analyze Booking View ": analyze_booking_view_sec,
+    # "Analyze Booking View Ver2": analyze_booking_view_sec,
     "Experience View": experience_view,
     "Keyword View": keyword_view,
     "Trend View ": trend_indicator_view_sec,

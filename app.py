@@ -742,11 +742,10 @@ from sqlalchemy import create_engine, text
 import pandas as pd
 
 
-# Function to get booking counts based on a list of titles
-def get_booking_counts(start_date, end_date, product_titles):
+def get_booking_counts(start_date, end_date):
     engine = get_connection()  # Use your function to get the connection
-    print(product_titles)
-    # Construct the SQL query using SQLAlchemy's text() to handle the SQL query
+
+    # Adjusted query to fetch booking counts for all experiences
     query = text(
         """
         SELECT
@@ -758,20 +757,18 @@ def get_booking_counts(start_date, end_date, product_titles):
         experiences_experience ee ON bb.experience_id = ee.id
         WHERE
         bb.payment_status = 'CAPTURED'
-        AND ee.title = ANY(:titles)
         AND bb.created_at >= :start_date AND bb.created_at < :end_date
         GROUP BY
         ee.title
         ORDER BY
         booking_count DESC;
-    """
+        """
     )
 
     # Execute the SQL query using the connection
     with engine.connect() as conn:
         result = conn.execute(
-            query,
-            {"titles": product_titles, "start_date": start_date, "end_date": end_date},
+            query, {"start_date": start_date, "end_date": end_date}
         ).fetchall()
 
     df = pd.DataFrame(result, columns=["Experience Title", "Booking Count"])
@@ -809,32 +806,43 @@ def process_data(data):
     return pd.DataFrame()
 
 
+from fuzzywuzzy import process
+
+
 def calculate_conversion_rate(booking_df, product_view_df):
-    # Merge the two DataFrames on the Experience Title
-    merged_df = pd.merge(
-        booking_df,
-        product_view_df,
-        how="left",
-        left_on="Experience Title",
-        right_on="Product Name",
-    )
+    product_names = product_view_df["Product Name"].tolist()  # Ensure this is a list
 
-    # Calculate Conversion Rate
-    merged_df["Conversion Rate (%)"] = (
-        merged_df["Booking Count"] / merged_df["Count"]
-    ) * 100
+    # Create a mapping of similar names
+    mapping = {}
+    for title in booking_df["Experience Title"]:
+        # Find the most similar product name for each booking title
+        match = process.extractOne(title, product_names)
+        if match:
+            best_match, similarity = match
+            if similarity > 80:  # Adjust threshold as needed
+                mapping[title] = best_match
 
-    # Handling cases where product view count is zero to avoid division by zero error
-    merged_df["Conversion Rate (%)"] = merged_df["Conversion Rate (%)"].replace(
-        [np.inf, -np.inf], 0
-    )
+    # Create new columns in booking_df for product view count and conversion rate
+    booking_df["Product View Count"] = 0
+    booking_df["Conversion Rate (%)"] = 0
 
-    # Selecting only required columns
-    merged_df = merged_df[
-        ["Experience Title", "Booking Count", "Count", "Conversion Rate (%)"]
-    ]
+    for title, match in mapping.items():
+        if match in product_view_df["Product Name"].values:
+            view_count = product_view_df.loc[
+                product_view_df["Product Name"] == match, "Count"
+            ].values[0]
+            booking_count = booking_df.loc[
+                booking_df["Experience Title"] == title, "Booking Count"
+            ].values[0]
+            conversion_rate = (booking_count / view_count) * 100 if view_count else 0
+            booking_df.loc[
+                booking_df["Experience Title"] == title, "Product View Count"
+            ] = view_count
+            booking_df.loc[
+                booking_df["Experience Title"] == title, "Conversion Rate (%)"
+            ] = conversion_rate
 
-    return merged_df
+    return booking_df
 
 
 def experience_view():
@@ -873,10 +881,8 @@ def experience_view():
 
         if not df_current.empty:
             st.subheader("Experience View - Current Week")
-             # display the views
-            st.dataframe(
-                df_current.head(25), use_container_width=True
-            ) 
+            # display the views
+            st.dataframe(df_current.head(25), use_container_width=True)
             display_horizontal_bar_chart(
                 df_current.head(25), "Top 25 Product Views - Current Week"
             )
@@ -886,12 +892,10 @@ def experience_view():
         product_titles_last_week = df_last["Product Name"].tolist()
         product_titles_current_week = df_current["Product Name"].tolist()
 
-        # Fetch booking counts for these products
-        booking_counts_last_week = get_booking_counts(
-            from_date_last, to_date_last, product_titles_last_week
-        )
+        # Fetch booking counts for all experiences
+        booking_counts_last_week = get_booking_counts(from_date_last, to_date_last)
         booking_counts_current_week = get_booking_counts(
-            from_date_current, to_date_current, product_titles_current_week
+            from_date_current, to_date_current
         )
 
         # Display booking counts in the Streamlit app
@@ -901,13 +905,18 @@ def experience_view():
         st.subheader("Booking Counts - Current Week")
         st.dataframe(booking_counts_current_week, use_container_width=True)
 
+        # Sort df_last by 'Product View Count' in descending order and take the top 25
+        sorted_df_last = df_last.sort_values(by='Count', ascending=False).head(25)
+        sorted_df_current = df_current.sort_values(by='Count', ascending=False).head(25)
+
+
         # === conversion part
-        # Calculate conversion rates
+        # Calculate and display conversion rates
         conversion_rates_last_week = calculate_conversion_rate(
-            booking_counts_last_week, df_last
+            booking_counts_last_week, sorted_df_last
         )
         conversion_rates_current_week = calculate_conversion_rate(
-            booking_counts_current_week, df_current
+            booking_counts_current_week, sorted_df_current
         )
 
         # Display booking counts with conversion rates in the Streamlit app

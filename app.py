@@ -513,13 +513,6 @@ def fetch_keywords_from_clevertap(from_date, to_date):
     # Constants for the event
     EVENT_NAME = "Searched"
 
-    # Headers using environment variables
-    # headers = {
-    #     "X-CleverTap-Account-Id": os.getenv("CLEVERTAP_ACCOUNT_ID"),
-    #     "X-CleverTap-Passcode": os.getenv("CLEVERTAP_PASSCODE"),
-    #     "Content-Type": "application/json",
-    # }
-
     headers = {
         "X-CleverTap-Account-Id": st.secrets["CLEVERTAP_ACCOUNT_ID"],
         "X-CleverTap-Passcode": st.secrets["CLEVERTAP_PASSCODE"],
@@ -581,10 +574,18 @@ def fetch_keywords_from_clevertap(from_date, to_date):
 
 
 def display_wordcloud(keywords):
-    # Generate a word cloud using frequencies
+    # Exclude '-1' from keywords
+    if "-1" in keywords:
+        del keywords["-1"]
+
+    # Sort and keep top 26 keywords
+    sorted_keywords = dict(
+        sorted(keywords.items(), key=lambda item: item[1], reverse=True)[:26]
+    )
+
     wordcloud = WordCloud(
         width=800, height=400, background_color="white"
-    ).generate_from_frequencies(keywords)
+    ).generate_from_frequencies(sorted_keywords)
     plt.figure(figsize=(8, 8), facecolor=None)
     plt.imshow(wordcloud)
     plt.axis("off")
@@ -595,6 +596,17 @@ def display_wordcloud(keywords):
 def convert_to_dataframe(keywords):
     # Convert the dictionary to a DataFrame
     df = pd.DataFrame(list(keywords.items()), columns=["Keyword", "Count"])
+
+    # Filter out rows where Keyword is '-1'
+    df = df[df["Keyword"] != "-1"]
+    # Sort and keep top 26 keywords
+    sorted_keywords = dict(
+        sorted(keywords.items(), key=lambda item: item[1], reverse=True)[:26]
+    )
+
+    # Convert the sorted dictionary to a DataFrame
+    df = pd.DataFrame(list(sorted_keywords.items()), columns=["Keyword", "Count"])
+
     return df
 
 
@@ -603,37 +615,66 @@ def to_csv(df):
     return df.to_csv().encode("utf-8")
 
 
+# Main function to handle the Streamlit view
 def keyword_view():
     st.title("CleverTap Keyword Analysis")
 
-    # Date pickers for start and end date
-    start_date = st.date_input("Start Date")
-    end_date = st.date_input("End Date")
+    # Date pickers for last week
+    st.subheader("Last Week")
+    start_date_last = st.date_input("Start Date (Last Week)")
+    end_date_last = st.date_input("End Date (Last Week)")
+
+    # Date pickers for current week
+    st.subheader("Current Week")
+    start_date_current = st.date_input("Start Date (Current Week)")
+    end_date_current = st.date_input("End Date (Current Week)")
 
     if st.button("Fetch Keywords"):
-        # Convert dates to required format
-        from_date = start_date.strftime("%Y%m%d")
-        to_date = end_date.strftime("%Y%m%d")
+        # Fetch and display keywords for last week
+        from_date_last = start_date_last.strftime("%Y%m%d")
+        to_date_last = end_date_last.strftime("%Y%m%d")
+        keywords_last = fetch_keywords_from_clevertap(from_date_last, to_date_last)
 
-        keywords = fetch_keywords_from_clevertap(from_date, to_date)
-        # print(keywords, "keysssz")
-        # Remove the key '-1'
-        if "-1" in keywords:
-            del keywords["-1"]
-        if keywords:
-            display_wordcloud(keywords)
-            df = convert_to_dataframe(keywords)
-            st.dataframe(
-                df, use_container_width=True
-            )  # Display the DataFrame in Streamlit
-
-            # Create a download button for the CSV
-            csv = to_csv(df)
+        if keywords_last:
+            st.subheader(
+                f"Keywords for Last Week ({start_date_last} to {end_date_last})"
+            )
+            display_wordcloud(keywords_last)
+            df_last = convert_to_dataframe(keywords_last)
+            st.dataframe(df_last, use_container_width=True)
+            csv_last = to_csv(df_last)
+            # For the last week data download button
             st.download_button(
-                label="Download data as CSV",
-                data=csv,
-                file_name="keywords.csv",
+                label="Download Last Week Data as CSV",
+                data=csv_last,
+                file_name="last_week_keywords.csv",
                 mime="text/csv",
+                key="download_last_week",  # Unique key for this button
+            )
+
+        # Fetch and display keywords for current week
+        from_date_current = start_date_current.strftime("%Y%m%d")
+        to_date_current = end_date_current.strftime("%Y%m%d")
+        keywords_current = fetch_keywords_from_clevertap(
+            from_date_current, to_date_current
+        )
+
+        if keywords_current:
+            st.subheader(
+                f"Keywords for Current Week ({start_date_current} to {end_date_current})"
+            )
+            display_wordcloud(keywords_current)
+            df_current = convert_to_dataframe(keywords_current)
+            st.dataframe(df_current, use_container_width=True)
+            csv_current = to_csv(df_current)
+            # For the current week data download button
+
+            st.download_button(
+                label="Download Current Week Data as CSV",
+                data=csv_current,
+                file_name="current_week_keywords.csv",
+                mime="text/csv",
+                key="download_current_week",  # Unique key for this button
             )
 
 
@@ -1335,7 +1376,7 @@ page_names_to_funcs = {
     # "Analyze Booking View Ver2": analyze_booking_view_sec,
     "Experience View": experience_view,
     "Keyword View": keyword_view,
-    #S"Test View ": test_view,
+    # S"Test View ": test_view,
 }
 
 demo_name = st.sidebar.selectbox("Choose a dashboard", page_names_to_funcs.keys())

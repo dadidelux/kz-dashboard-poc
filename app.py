@@ -1330,12 +1330,12 @@ def trend_indicator_view_sec():
 # ============================================================================= SIDE BAR MENU =================================================================
 
 page_names_to_funcs = {
+    "Trend View ": trend_indicator_view_sec,
     "Analyze Booking View ": analyze_booking_view_sec,
     # "Analyze Booking View Ver2": analyze_booking_view_sec,
     "Experience View": experience_view,
     "Keyword View": keyword_view,
-    "Trend View ": trend_indicator_view_sec,
-    "Test View ": test_view,
+    #S"Test View ": test_view,
 }
 
 demo_name = st.sidebar.selectbox("Choose a dashboard", page_names_to_funcs.keys())

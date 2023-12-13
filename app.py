@@ -678,18 +678,12 @@ def keyword_view():
             )
 
 
-# ================================================================ PRODUCT VIEWS =================================================================
+# ================================================================ Experience / PRODUCT VIEWS =================================================================
 
 
 @st.cache_data
 def fetch_product_views(from_date, to_date):
     EVENT_NAME = "Product Viewed"
-
-    # headers = {
-    #     "X-CleverTap-Account-Id": os.getenv("CLEVERTAP_ACCOUNT_ID"),
-    #     "X-CleverTap-Passcode": os.getenv("CLEVERTAP_PASSCODE"),
-    #     "Content-Type": "application/json",
-    # }
 
     headers = {
         "X-CleverTap-Account-Id": st.secrets["CLEVERTAP_ACCOUNT_ID"],
@@ -744,44 +738,184 @@ def fetch_product_views(from_date, to_date):
         return None
 
 
-def display_horizontal_bar_chart(data):
+from sqlalchemy import create_engine, text
+import pandas as pd
+
+
+# Function to get booking counts based on a list of titles
+def get_booking_counts(start_date, end_date, product_titles):
+    engine = get_connection()  # Use your function to get the connection
+    print(product_titles)
+    # Construct the SQL query using SQLAlchemy's text() to handle the SQL query
+    query = text(
+        """
+        SELECT
+        ee.title,
+        COUNT(bb.id) AS booking_count
+        FROM
+        booking_booking bb
+        JOIN
+        experiences_experience ee ON bb.experience_id = ee.id
+        WHERE
+        bb.payment_status = 'CAPTURED'
+        AND ee.title = ANY(:titles)
+        AND bb.created_at >= :start_date AND bb.created_at < :end_date
+        GROUP BY
+        ee.title
+        ORDER BY
+        booking_count DESC;
+    """
+    )
+
+    # Execute the SQL query using the connection
+    with engine.connect() as conn:
+        result = conn.execute(
+            query,
+            {"titles": product_titles, "start_date": start_date, "end_date": end_date},
+        ).fetchall()
+
+    df = pd.DataFrame(result, columns=["Experience Title", "Booking Count"])
+    return df
+
+
+def display_horizontal_bar_chart(df, title):
+    # Sort the DataFrame in ascending order for the chart
+    df_chart = df.sort_values(by="Count", ascending=True)
+
+    # Using Plotly to create a horizontal bar chart
+    fig = px.bar(
+        df_chart,
+        y="Product Name",
+        x="Count",
+        orientation="h",
+        color="Count",
+        color_continuous_scale="Blues",
+        height=800,
+    )
+    fig.update_layout(
+        title_text=title,
+        xaxis_title="Count",
+        yaxis_title="Product Name",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def process_data(data):
     if data:
         product_data = data.get("eventPropertyProductViews", {}).get("STR", {})
         df = pd.DataFrame(product_data.items(), columns=["Product Name", "Count"])
-        df.sort_values(by="Count", ascending=True, inplace=True)
-        # Filter out the entry with Product Name "-1"
-        df = df[df["Product Name"] != "-1"]
-        # Display the DataFrame
-        st.dataframe(df, use_container_width=True)
-        # Using Plotly to create a horizontal bar chart
-        fig = px.bar(
-            df,
-            y="Product Name",
-            x="Count",
-            orientation="h",
-            color="Count",
-            color_continuous_scale="Blues",
-            height=800,
-        )
-        fig.update_layout(
-            title_text="Top 26 Product Views",
-            xaxis_title="Count",
-            yaxis_title="Product Name",
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        df = df[df["Product Name"] != "-1"].sort_values(by="Count", ascending=False)
+        return df
+    return pd.DataFrame()
+
+
+def calculate_conversion_rate(booking_df, product_view_df):
+    # Merge the two DataFrames on the Experience Title
+    merged_df = pd.merge(
+        booking_df,
+        product_view_df,
+        how="left",
+        left_on="Experience Title",
+        right_on="Product Name",
+    )
+
+    # Calculate Conversion Rate
+    merged_df["Conversion Rate (%)"] = (
+        merged_df["Booking Count"] / merged_df["Count"]
+    ) * 100
+
+    # Handling cases where product view count is zero to avoid division by zero error
+    merged_df["Conversion Rate (%)"] = merged_df["Conversion Rate (%)"].replace(
+        [np.inf, -np.inf], 0
+    )
+
+    # Selecting only required columns
+    merged_df = merged_df[
+        ["Experience Title", "Booking Count", "Count", "Conversion Rate (%)"]
+    ]
+
+    return merged_df
 
 
 def experience_view():
     st.title("CleverTap Experience View Analysis")
-    # Date pickers for start and end date
-    start_date = st.date_input("Start Date")
-    end_date = st.date_input("End Date")
+
+    # Date pickers for last week
+    st.subheader("Last Week")
+    start_date_last = st.date_input("Start Date (Last Week)", key="start_last")
+    end_date_last = st.date_input("End Date (Last Week)", key="end_last")
+
+    # Date pickers for current week
+    st.subheader("Current Week")
+    start_date_current = st.date_input("Start Date (Current Week)", key="start_current")
+    end_date_current = st.date_input("End Date (Current Week)", key="end_current")
 
     if st.button("Fetch Experience Views"):
-        from_date = start_date.strftime("%Y%m%d")
-        to_date = end_date.strftime("%Y%m%d")
-        data = fetch_product_views(from_date, to_date)
-        display_horizontal_bar_chart(data)
+        # Fetch and display data for last week
+        from_date_last = start_date_last.strftime("%Y%m%d")
+        to_date_last = end_date_last.strftime("%Y%m%d")
+        data_last = fetch_product_views(from_date_last, to_date_last)
+        df_last = process_data(data_last)
+
+        if not df_last.empty:
+            st.subheader("Experience View - Last Week")
+            # display the view
+            st.dataframe(df_last.head(25), use_container_width=True)
+            display_horizontal_bar_chart(
+                df_last.head(25), "Top 25 Product Views - Last Week"
+            )
+
+        # Fetch and display data for current week
+        from_date_current = start_date_current.strftime("%Y%m%d")
+        to_date_current = end_date_current.strftime("%Y%m%d")
+        data_current = fetch_product_views(from_date_current, to_date_current)
+        df_current = process_data(data_current)
+
+        if not df_current.empty:
+            st.subheader("Experience View - Current Week")
+             # display the views
+            st.dataframe(
+                df_current.head(25), use_container_width=True
+            ) 
+            display_horizontal_bar_chart(
+                df_current.head(25), "Top 25 Product Views - Current Week"
+            )
+
+        # Assuming you now have df_last and df_current as the top 25 product views
+        # Extract the product titles
+        product_titles_last_week = df_last["Product Name"].tolist()
+        product_titles_current_week = df_current["Product Name"].tolist()
+
+        # Fetch booking counts for these products
+        booking_counts_last_week = get_booking_counts(
+            from_date_last, to_date_last, product_titles_last_week
+        )
+        booking_counts_current_week = get_booking_counts(
+            from_date_current, to_date_current, product_titles_current_week
+        )
+
+        # Display booking counts in the Streamlit app
+        st.subheader("Booking Counts - Last Week")
+        st.dataframe(booking_counts_last_week, use_container_width=True)
+
+        st.subheader("Booking Counts - Current Week")
+        st.dataframe(booking_counts_current_week, use_container_width=True)
+
+        # === conversion part
+        # Calculate conversion rates
+        conversion_rates_last_week = calculate_conversion_rate(
+            booking_counts_last_week, df_last
+        )
+        conversion_rates_current_week = calculate_conversion_rate(
+            booking_counts_current_week, df_current
+        )
+
+        # Display booking counts with conversion rates in the Streamlit app
+        st.subheader("Booking Counts with Conversion Rates - Last Week")
+        st.dataframe(conversion_rates_last_week, use_container_width=True)
+
+        st.subheader("Booking Counts with Conversion Rates - Current Week")
+        st.dataframe(conversion_rates_current_week, use_container_width=True)
 
 
 # ============================================================================= the viewer =================================================================
@@ -1296,22 +1430,6 @@ def run_query(start_date, end_date, country="United Arab Emirates"):
     engine = get_connection()
     df = pd.read_sql(query, engine, params=params)
     return df
-
-
-# def trend_indicator_view_sec():
-#     # Streamlit UI
-#     st.title("Booking Trends Analysis by Country")
-
-#     # Country selection (assuming you want to allow different countries to be selected)
-#     country = st.selectbox(
-#         "Select Country", ["United Arab Emirates"]  # Add more countries as needed
-#     )
-
-#     # Date range picker
-#     start_date, end_date = st.date_input(
-#         "Select the date range",
-#         [datetime.datetime(2023, 10, 31), datetime.datetime(2023, 11, 13)],
-#     )
 
 
 def trend_indicator_view_sec():

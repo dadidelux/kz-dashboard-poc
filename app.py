@@ -104,407 +104,6 @@ def create_gauge_with_color_and_data(week_values, total_value=7000):
     )
     return fig
 
-
-def test_view():
-    image = "kidzapp-logo.png"  # Replace with the actual path to your image
-    st.image(
-        image,
-        width=200,  # Adjust the width to your desired size
-    )
-    # Streamlit app
-    st.title("Kidzapp Weekly Dashboard")
-
-    # Weekly values
-    week_values = [1201, 1024, 894, 913]  # Values for each week
-    gauge_chart = create_gauge_with_color_and_data(week_values)
-
-    st.plotly_chart(gauge_chart)
-
-    # Display legend with trend arrows
-    st.write("### Legend")
-    for i, value in enumerate(week_values):
-        trend_arrow = "↑" if i == 0 or week_values[i] >= week_values[i - 1] else "↓"
-        trend_color = "green" if trend_arrow == "↑" else "red"
-        colored_text = f'<span style="color: {trend_color};">Week {i+1}: {value} ({trend_arrow})</span>'
-        st.markdown(colored_text, unsafe_allow_html=True)
-
-    # Data
-    week_values = [1201, 1024, 894, 913]
-    weekly_target = [1166, 1166, 1166, 1166]
-    lastyear_target = [831, 708, 665, 605]
-
-    # Create a DataFrame for plotting
-    df = pd.DataFrame(
-        {
-            "Week": range(1, len(week_values) + 1),
-            "Weekly Target": weekly_target,
-            "Actual Values": week_values,
-            "Last Year Target": lastyear_target,
-        }
-    )
-
-    # Create a clustered bar chart
-    fig = px.bar(
-        df,
-        x="Week",
-        y=["Actual Values", "Weekly Target", "Last Year Target"],
-        labels={"value": "Values"},
-        title="Comparison of Actual to Weekly and Last Year Booking Count",
-        barmode="group",
-    )  # Use 'group' for clustered bars
-    fig.update_layout(xaxis_title="Week", yaxis_title="Values")
-    st.plotly_chart(fig)
-
-
-def trend_indicator_view():
-    # Define the data with padding for missing values
-    data = {
-        "Provider": [
-            "Rayna",
-            "Cheeky Monkeys",
-            "Orange Wheels",
-            "Bounce",
-            "Emaar (Main)",
-            "Ready Set Go",
-            "The Farm",
-            "Air Maniax",
-            "Playtorium",
-            "Kids HQ",
-            "Splash N Party",
-            "Dubai Garden Glow",
-            "OliOli",
-            "Woo-hoo",
-            "Adventure Parx + Cafe",
-            "Dubai Parks and Resorts",
-            "Aqua Parks Leisure",
-            "SupperClub",
-            "Emirates Park Zoo",
-            "Bricobilandia",
-            "Piccoli",
-            "Ready Steady Go",
-            "Marinelys Babysitting Center",
-            "Fiafia",
-            "Tour Dubai (Main)",
-            "Tr88house",
-            "Kids Unlimited",
-            "Dare Park",
-            "Gymnastex",
-            "Splash Island",
-            "Museum of Illusions",
-            "Cuckoo's",
-            "Kidzapp",
-            "Aventura",
-            "Tommy Life Kids Amusement Arcade",
-            "Kids Hub Entertainment",
-            "Molly Coddle Baby Spa",
-            "Playville Kids Amusement Arcade",
-            "Kids Zone (Main)",
-            "3D World Selfie Museum Dubai",
-            "Adventureland",
-            "Bricks 4 Fun",
-            "La La Land",
-            "The National Aquarium",
-            "Prosportsuae",
-            "Chillout Lounge",
-            "Gogo Village",
-            "Rose Ballet",
-            "Suwaidi Pearl Farm",
-            "Shurooq (Main)",
-            "Beitfann",
-            "Toda Dubai",
-            "Circuit X (Main)",
-            "IMG Worlds of Adventures",
-            "Swimaholic",
-            "Sahara Marine",
-            "Little Champions Club",
-            "Priohub",
-            "Swissotel Al Ghurair",
-            "Doodle Kids Play",
-            "Bab Al Nojoum",
-        ],
-        "Week 1": [
-            255,
-            167,
-            94,
-            94,
-            84,
-            54,
-            46,
-            46,
-            33,
-            62,
-            24,
-            26,
-            19,
-            20,
-            14,
-            21,
-            19,
-            15,
-            10,
-            10,
-            7,
-            12,
-            5,
-            3,
-            3,
-            8,
-            15,
-            5,
-            4,
-            3,
-            1,
-            1,
-            2,
-            0,
-            2,
-            2,
-            2,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-        ],
-        "Week 2": [
-            241,
-            117,
-            115,
-            80,
-            57,
-            49,
-            41,
-            36,
-            37,
-            15,
-            24,
-            24,
-            22,
-            13,
-            21,
-            12,
-            12,
-            10,
-            11,
-            9,
-            8,
-            7,
-            5,
-            8,
-            3,
-            4,
-            0,
-            6,
-            3,
-            1,
-            1,
-            3,
-            3,
-            3,
-            0,
-            3,
-            3,
-            2,
-            0,
-            0,
-            3,
-            3,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            2,
-            1,
-            1,
-            0,
-            0,
-            1,
-        ],
-        "Week 3": [
-            209,
-            104,
-            65,
-            53,
-            59,
-            36,
-            48,
-            34,
-            29,
-            18,
-            39,
-            20,
-            17,
-            19,
-            9,
-            8,
-            10,
-            13,
-            14,
-            13,
-            12,
-            4,
-            8,
-            6,
-            5,
-            2,
-            0,
-            0,
-            5,
-            7,
-            3,
-            3,
-            0,
-            0,
-            0,
-            1,
-            2,
-            1,
-            2,
-            0,
-            2,
-            0,
-            1,
-            3,
-            3,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-        ],
-        "Week 4": [
-            232,
-            120,
-            94,
-            55,
-            41,
-            33,
-            30,
-            34,
-            23,
-            21,
-            16,
-            22,
-            22,
-            23,
-            17,
-            15,
-            13,
-            9,
-            11,
-            10,
-            9,
-            5,
-            8,
-            3,
-            6,
-            3,
-            1,
-            2,
-            2,
-            5,
-            5,
-            3,
-            4,
-            4,
-            0,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-            0,
-            2,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            1,
-            0,
-            1,
-        ],
-    }
-
-    import streamlit as st
-    import pandas as pd
-    import plotly.express as px
-
-    # Define the data with padding for missing values
-    # (Same data as before)
-
-    # Ensure all weeks have the same length by padding with zeros
-    max_week_length = max(len(data[week]) for week in data)
-    for week in data:
-        data[week] += [0] * (max_week_length - len(data[week]))
-
-    # Create a DataFrame with numerical columns
-    df = pd.DataFrame(data)
-
-    # Convert numerical columns to integers
-    numeric_columns = df.columns[1:]  # Exclude the "Venue" column
-    df[numeric_columns] = df[numeric_columns].astype(int)
-
-    # Create a Streamlit app
-    st.title("Weekly Data with Trend Indicator")
-
-    # Reset the index to include the "Venue" column
-    df.reset_index(drop=True, inplace=True)
-
-    # Display the DataFrame with trend indicators
-    prev_week = df.columns[-2]  # Get the name of the previous week's column
-    current_week = df.columns[-1]  # Get the name of the current week's column
-
-    # Function to calculate trend indicator (Up or Down)
-    def calculate_trend_indicator(row):
-        if row[current_week] > row[prev_week]:
-            return "Up"
-        elif row[current_week] < row[prev_week]:
-            return "Down"
-        else:
-            return ""
-
-    # Apply the function to each row to calculate the trend indicator
-    df["Trend"] = df.apply(calculate_trend_indicator, axis=1)
-
-    # Set the "Provider" column as the index
-    df.set_index("Provider", inplace=True)
-
-    # Create a bar chart of the top 10 venues for the current week
-    top_10_venues = df.nlargest(10, current_week)
-    fig = px.bar(
-        top_10_venues,
-        x=top_10_venues.index,
-        y=current_week,
-        title="Top 10 Providers for Current Week",  # Updated title
-    )
-    fig.update_xaxes(title="Provider")
-    fig.update_yaxes(title=current_week)
-    # Display the table with trend indicators
-    # st.write(df)
-    st.dataframe(df, use_container_width=True)
-    st.plotly_chart(fig)
-
-
 # ================================================================ KEYWORD VIEWS =================================================================
 
 
@@ -949,234 +548,73 @@ def get_connection():
         f"{db_type}://{username}:{password}@{host}/{database_name}"
     )
 
-
-@st.cache_data
-def create_query(start_date, end_date, previous_year=False):
-    query_parts = ["SELECT pp.name AS provider_name"]
-
-    # Calculate the start and end dates for the previous year if required
-    if previous_year:
-        start_date = start_date.replace(year=start_date.year - 1)
-        end_date = end_date.replace(year=end_date.year - 1)
-
-    # Initialize the current_date as start_date
-    current_date = start_date
-    week_count = 1
-
-    while current_date <= end_date:
-        week_end = current_date + datetime.timedelta(days=6)
-        if week_end > end_date:
-            week_end = end_date
-
-        # Adding each COUNT clause with a leading comma
-        query_parts.append(
-            f", COUNT(CASE WHEN bb.created_at BETWEEN '{current_date}' AND '{week_end}' THEN 1 END) AS week_{week_count}_count"
-        )
-
-        # Update current_date to the next period
-        current_date = week_end + datetime.timedelta(days=1)
-        week_count += 1
-
-    # Adding the remaining part of the SQL query
-    query_parts.append(
-        f"""
-    FROM
-        booking_booking bb
-    JOIN
-        experiences_experience ee ON bb.experience_id = ee.id
-    JOIN
-        provider_provider pp ON ee.provider_id = pp.id
-    JOIN
-        core_city cc ON ee.city_id = cc.id
-    JOIN
-        core_country co ON cc.country_id = co.id
-    WHERE
-        bb.payment_status = 'CAPTURED'
-        AND co.name = 'United Arab Emirates'
-        AND bb.created_at BETWEEN '{start_date}' AND '{end_date}'
-    GROUP BY
-        pp.name
-    ORDER BY
-        pp.name
-    """
-    )
-
-    return " ".join(query_parts)
-
-
-def analyze_booking_view():
-    st.title("Weekly Booking Analysis")
-
-    # Allow the user to select from the years 2022 and 2023 only
-    analysis_year = st.selectbox("Select the year for analysis", [2023, 2022, 2021])
-
-    # Calculate dates for the selected year
-    jan_1 = datetime.date(analysis_year, 1, 1)
-    dec_31 = datetime.date(analysis_year, 12, 31)
-
-    # Set default dates for the date input
-    today = datetime.date.today()
-    default_start_date = today if jan_1 <= today <= dec_31 else jan_1
-    default_end_date = default_start_date + datetime.timedelta(days=6)
-
-    # User selects vacation dates for the selected year
-    vacation_dates = st.date_input(
-        "Select your dates",
-        (default_start_date, default_end_date),
-        min_value=jan_1,
-        max_value=dec_31,
-        format="MM.DD.YYYY",
-    )
-
-    # Check if the returned value is a tuple with two dates
-    if not isinstance(vacation_dates, tuple) or len(vacation_dates) != 2:
-        st.warning("Please complete the date range.")
-        return  # Exit the function
-
-    # Extract start and end dates from the selected range
-    start_date, end_date = vacation_dates
-
-    # Check if start and end dates are in the same month
-    if start_date.month != end_date.month or start_date.year != end_date.year:
-        st.warning(
-            "Start and End dates must be in the same month. Please adjust the dates."
-        )
-        return  # Exit the function if dates are not in the same month
-
-    if st.button("Analyze Bookings"):
-        # Queries for current and previous year
-        query_current_year = create_query(start_date, end_date)
-        query_previous_year = create_query(start_date, end_date, previous_year=True)
-
-        # Database connection
-        conn = get_connection()
-
-        # Retrieve data for current and previous year
-        data_current_year = pd.read_sql(query_current_year, conn)
-        data_previous_year = pd.read_sql(query_previous_year, conn)
-
-        # Define weeks
-        weeks = ["week_1_count", "week_2_count", "week_3_count", "week_4_count"]
-
-        # Ensure all week columns exist and set default values if missing
-        for week in weeks:
-            if week not in data_current_year.columns:
-                data_current_year[week] = 0
-            if week not in data_previous_year.columns:
-                data_previous_year[week] = 0
-
-        # Define colors
-        colors = ["green", "darkorange", "lightgray", "orange"]
-
-        # Specific values to add as a stacked column (weekly target)
-        specific_values_wk_target = np.array(
-            [1166, 1166, 1166, 1166]
-        )  # Converted to numpy array
-
-        # Plotting
-        fig, ax = plt.subplots()
-
-        # Plotting function for each data set
-        def plot_data(data, ypos):
-            total_bookings_per_week = data[weeks].sum()
-            cumulative = total_bookings_per_week.cumsum()
-
-            for i in range(len(weeks)):
-                left = 0 if i == 0 else cumulative[i - 1]
-                bar_width = total_bookings_per_week[i]
-                bar = ax.barh(
-                    ypos,
-                    bar_width,
-                    left=left,
-                    color=colors[i],
-                    label=weeks[i] if ypos == 2 else "",
-                )
-
-                # Add text label inside each bar segment
-                text_x_position = left + bar_width / 2
-                ax.text(
-                    text_x_position,
-                    ypos,
-                    f"{bar_width}",
-                    va="center",
-                    ha="center",
-                    color="white",
-                )
-
-        # Plotting data for current year, previous year, and weekly target
-        plot_data(
-            pd.DataFrame(
-                {wk: [specific_values_wk_target[i]] for i, wk in enumerate(weeks)}
-            ),
-            2,
-        )
-        plot_data(data_current_year, 1)
-        plot_data(data_previous_year, 0)
-
-        # Set the chart title, labels, and legend
-        month_name = calendar.month_name[start_date.month]
-        ax.set_title(
-            f"Cumulative Total Bookings by Week for {month_name} {start_date.year}: Weekly Target, Current Year, and Previous Year"
-        )
-        ax.set_xlabel("Total Bookings")
-        ax.set_yticks([0, 1, 2], labels=["Last Year", "Actual Year", "Weekly Target"])
-        ax.legend()
-
-        # Display the chart in Streamlit
-        st.pyplot(fig)
-
-        # Display the DataFrame (optional)
-        st.write("Actual Year Data:")
-        st.write(data_current_year)
-        st.write("Last Year Data:")
-        st.write(data_previous_year)
-
-
 # ================================================================SEC
 
 import datetime
 from datetime import timedelta
 
-
+@st.cache_data
 def create_query_sec(start_date, end_date, previous_year=False):
     query_parts = []
-
-    # Adjust for previous year if required
-    if previous_year:
-        start_date = start_date.replace(year=start_date.year - 1)
-        end_date = end_date.replace(year=end_date.year - 1)
 
     current_date = start_date
     query_count = []  # Create a list to store COUNT statements
 
-    while current_date <= end_date:
+    while current_date < end_date:
         week_start = current_date
-        week_end = week_start + timedelta(days=6)
+        week_end = week_start
+
+        # Find the next Tuesday
+        while week_end.weekday() != 1:
+            week_end += timedelta(days=1)
+
+        # Extend to include the Tuesday
+        week_end += timedelta(days=1)
+
+        # If it's the last week of the year, adjust the week to include January 1st of the next year
+        if week_end.year > week_start.year:
+            week_end = datetime.date(week_end.year, 1, 1)
+            print("aasdasd", week_end)
+
+        # Ensure the week does not exceed the end_date
         if week_end > end_date:
-            week_end = end_date
+            week_end = end_date + timedelta(days=1)  # Include the last day
 
         # Format week label as "MMM DD - MMM DD"
-        week_label = f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}"
+        week_label = f"{week_start.strftime('%b %d')} - {(week_end - timedelta(days=1)).strftime('%b %d')}"
+
+        # Adjust dates for previous year if required
+        adjusted_week_start = week_start.replace(year=week_start.year - 1) if previous_year else week_start
+        adjusted_week_end = week_end.replace(year=week_end.year - 1) if previous_year else week_end
+
+     
 
         query_count.append(
-            f"COUNT(CASE WHEN bb.created_at BETWEEN '{week_start}' AND '{week_end}' THEN 1 END) AS \"{week_label}\""
+            f"COUNT(CASE WHEN bb.created_at >= '{adjusted_week_start}' AND bb.created_at < '{adjusted_week_end}' THEN 1 END) AS \"{week_label} Weekly Booking\""
         )
 
-        current_date = week_start + timedelta(days=7)  # Move to the next week
+        # Move to the next week
+        current_date = week_end
 
     # Join the COUNT statements with commas
     query_parts.append(", ".join(query_count))
 
     # Completing the SQL query
+    adjusted_start_date = start_date.replace(year=start_date.year - 1) if previous_year else start_date
+    adjusted_end_date = end_date.replace(year=end_date.year - 1) if previous_year else end_date
+
+    st.write(adjusted_week_start, adjusted_week_end)
     query_parts.insert(0, "SELECT")
     query_parts.append(
-        """
+        f"""
         FROM booking_booking bb
+        JOIN experiences_experience ee ON bb.experience_id = ee.id
+        JOIN core_city cc ON ee.city_id = cc.id
+        JOIN core_country co ON cc.country_id = co.id
         WHERE bb.payment_status = 'CAPTURED'
-        AND bb.created_at BETWEEN '{start_date}' AND '{end_date}'
-        """.format(
-            start_date=start_date, end_date=end_date
-        )
+        AND co.name = 'United Arab Emirates'
+        AND bb.created_at >= '{adjusted_start_date}' AND bb.created_at < '{adjusted_week_end}'
+        """
     )
 
     return " ".join(query_parts)
@@ -1231,6 +669,12 @@ def analyze_booking_view_sec():
         # Queries for current and previous year
         query_current_year = create_query_sec(start_date, end_date)
         query_previous_year = create_query_sec(start_date, end_date, previous_year=True)
+
+        # Print SQL queries used for the analysis
+        st.text("SQL Query for Current Year:")
+        st.write(query_current_year)
+        st.text("SQL Query for Previous Year:")
+        st.write(query_previous_year)
 
         # Retrieve data for current and previous year
         data_current_year = pd.read_sql(query_current_year, conn)
@@ -1351,42 +795,6 @@ def analyze_booking_view_sec():
 
 # ============================================================================= NEW Trend View =================================================================
 
-
-# def run_query(start_date, end_date, country):
-#     query = """
-#     SELECT
-#         pp.name AS provider_name,
-#         COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) AS "Previous Week",
-#         COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) AS "Current Week",
-#         CASE
-#             WHEN COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) > COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) THEN 'Trend Up'
-#             WHEN COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) < COUNT(CASE WHEN bb.created_at BETWEEN %s AND %s THEN 1 END) THEN 'Trend Down'
-#             ELSE 'Same'
-#         END AS Trend
-#     FROM
-#         booking_booking bb
-#     JOIN
-#         experiences_experience ee ON bb.experience_id = ee.id
-#     JOIN
-#         provider_provider pp ON ee.provider_id = pp.id
-#     JOIN
-#         core_country co ON cc.country_id = co.id
-#     WHERE
-#         bb.payment_status = 'CAPTURED'
-#         AND co.name = %s
-#         AND bb.created_at BETWEEN %s AND %s
-#     GROUP BY
-#         pp.name
-#     ORDER BY
-#         pp.name;
-#     """
-
-#     with get_connection() as conn:
-#         return pd.read_sql(
-#             query,
-#             conn,
-#             params=[start_date, end_date] * 4 + [country, start_date, end_date],
-#         )
 
 
 def run_query(start_date, end_date, country="United Arab Emirates"):

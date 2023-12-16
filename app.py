@@ -795,24 +795,30 @@ def analyze_booking_view_sec():
 
 
 
-def run_query(start_date, end_date, country="United Arab Emirates"):
-    # Calculating the start and end dates for the previous week
-    prev_week_end = start_date - datetime.timedelta(days=1)
-    prev_week_start = prev_week_end - datetime.timedelta(days=6)
-
+def run_query(week1_start, week1_end, week2_start, week2_end, week3_start, week3_end, week4_start, week4_end, country="United Arab Emirates"):
     query = """
     SELECT 
         pp.name AS provider_name,
-        COUNT(CASE WHEN bb.created_at BETWEEN %(prev_week_start)s AND %(prev_week_end)s THEN 1 END) AS "prev_week_count",
-        COUNT(CASE WHEN bb.created_at BETWEEN %(current_week_start)s AND %(current_week_end)s THEN 1 END) AS "current_week_count",
-        CASE 
-            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(current_week_start)s AND %(current_week_end)s THEN 1 END) > 
-                 COUNT(CASE WHEN bb.created_at BETWEEN %(prev_week_start)s AND %(prev_week_end)s THEN 1 END) 
+        COUNT(CASE WHEN bb.created_at BETWEEN %(week1_start)s AND %(week1_end)s THEN 1 END) AS "Week 1 %(week1_start)s - %(week1_end)s",
+        COUNT(CASE WHEN bb.created_at BETWEEN %(week2_start)s AND %(week2_end)s THEN 1 END) AS "Week 2 %(week2_start)s - %(week2_end)s",
+        COUNT(CASE WHEN bb.created_at BETWEEN %(week3_start)s AND %(week3_end)s THEN 1 END) AS "Week 3 %(week3_start)s - %(week3_end)s",
+        COUNT(CASE WHEN bb.created_at BETWEEN %(week4_start)s AND %(week4_end)s THEN 1 END) AS "Week 4 %(week4_start)s - %(week4_end)s",
+        CASE
+            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(week2_start)s AND %(week2_end)s THEN 1 END) = 0 AND 
+                COUNT(CASE WHEN bb.created_at BETWEEN %(week3_start)s AND %(week3_end)s THEN 1 END) = 0 AND
+                COUNT(CASE WHEN bb.created_at BETWEEN %(week4_start)s AND %(week4_end)s THEN 1 END) > 0
+            THEN 'New Booking' 
+            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(week4_start)s AND %(week4_end)s THEN 1 END) >= 
+                COUNT(CASE WHEN bb.created_at BETWEEN %(week3_start)s AND %(week3_end)s THEN 1 END) + 2
             THEN 'Trend Up'
-            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(current_week_start)s AND %(current_week_end)s THEN 1 END) < 
-                 COUNT(CASE WHEN bb.created_at BETWEEN %(prev_week_start)s AND %(prev_week_end)s THEN 1 END) 
+            WHEN COUNT(CASE WHEN bb.created_at BETWEEN %(week4_start)s AND %(week4_end)s THEN 1 END) <= 
+                COUNT(CASE WHEN bb.created_at BETWEEN %(week3_start)s AND %(week3_end)s THEN 1 END) - 2
             THEN 'Trend Down'
-            ELSE 'Same'
+            WHEN ABS(COUNT(CASE WHEN bb.created_at BETWEEN %(week4_start)s AND %(week4_end)s THEN 1 END) - 
+                    COUNT(CASE WHEN bb.created_at BETWEEN %(week3_start)s AND %(week3_end)s THEN 1 END)) <= 1
+            THEN 'Same'
+            
+            ELSE 'Not Defined'
         END AS Trend
     FROM 
         booking_booking bb
@@ -827,18 +833,23 @@ def run_query(start_date, end_date, country="United Arab Emirates"):
     WHERE 
         bb.payment_status = 'CAPTURED'
         AND co.name = %(country)s
-        AND bb.created_at BETWEEN %(prev_week_start)s AND %(current_week_end)s
+        AND bb.created_at BETWEEN %(week1_start)s AND %(week4_end)s
     GROUP BY 
         pp.name
     ORDER BY 
         pp.name;
+
     """
 
     params = {
-        "prev_week_start": prev_week_start.strftime("%Y-%m-%d"),
-        "prev_week_end": prev_week_end.strftime("%Y-%m-%d"),
-        "current_week_start": start_date.strftime("%Y-%m-%d"),
-        "current_week_end": end_date.strftime("%Y-%m-%d"),
+        "week1_start": week1_start.strftime("%Y-%m-%d"),
+        "week1_end": week1_end.strftime("%Y-%m-%d"),
+        "week2_start": week2_start.strftime("%Y-%m-%d"),
+        "week2_end": week2_end.strftime("%Y-%m-%d"),
+        "week3_start": week3_start.strftime("%Y-%m-%d"),
+        "week3_end": week3_end.strftime("%Y-%m-%d"),
+        "week4_start": week4_start.strftime("%Y-%m-%d"),
+        "week4_end": week4_end.strftime("%Y-%m-%d"),
         "country": country,
     }
 
@@ -846,59 +857,67 @@ def run_query(start_date, end_date, country="United Arab Emirates"):
     df = pd.read_sql(query, engine, params=params)
     return df
 
+@st.cache_data
+def convert_df(df):
+    return df.to_csv(index=False).encode('utf-8')
 
 def trend_indicator_view_sec():
     st.title("Booking Trends Analysis by Country")
 
     # Country selection (assuming you want to allow different countries to be selected)
-    country = st.selectbox(
-        "Select Country", ["United Arab Emirates"]
-    )  # Modify as needed
+    country = st.selectbox("Select Country", ["United Arab Emirates"])
 
-    # Determine today's date and next week's Monday
-    today = datetime.datetime.now().date()
-    next_monday = today + datetime.timedelta((0 - today.weekday()) % 7 + 7)
+    # Allow user to input four sets of dates
+    week1_start, week1_end = st.date_input("Select Week 1 Date Range", [datetime.date(2023, 10, 24), datetime.date(2023, 10, 31)])
+    week2_start, week2_end = st.date_input("Select Week 2 Date Range", [week1_end + datetime.timedelta(days=1), week1_end + datetime.timedelta(days=7)])
+    week3_start, week3_end = st.date_input("Select Week 3 Date Range This should include the previous week", [week2_end + datetime.timedelta(days=1), week2_end + datetime.timedelta(days=7)])
+    week4_start, week4_end = st.date_input("Select Week 4 Date Range This should include the current week", [week3_end + datetime.timedelta(days=1), week3_end + datetime.timedelta(days=7)])
 
-    # Date range picker with default values set to today and next week's Monday
-    start_date, end_date = st.date_input("Select the date range", [today, next_monday])
+    # Button to trigger the analysis
+    if st.button('Start Analysis'):
+        if country and all([week1_start, week1_end, week2_start, week2_end, week3_start, week3_end, week4_start, week4_end]):
+            # Call the updated query function
+            df = run_query(week1_start, week1_end, week2_start, week2_end, week3_start, week3_end, week4_start, week4_end, country)
 
-    if start_date and end_date and country:
-        # Adjust start_date and end_date to consider the whole days
-        start_date = datetime.datetime.combine(start_date, datetime.time.min)
-        end_date = datetime.datetime.combine(end_date, datetime.time.max)
+            # # Displaying the DataFrame
+            st.header("Booking Trends Results")
+            # st.dataframe(df)
 
-        df = run_query(start_date, end_date, country)
+            # Splitting the DataFrame based on the Trend
+            if "trend" in df.columns:
+                df_trend_up = df[df["trend"] == "Trend Up"]
+                df_trend_down = df[df["trend"] == "Trend Down"]
+                df_trend_same = df[df["trend"] == "Same"]
+                df_new_booking = df[df["trend"] == "New Booking"]  # New booking category
 
-        # Format the date ranges for column naming
-        prev_week_label = f"{start_date.strftime('%b %d')} - {(end_date - datetime.timedelta(days=7)).strftime('%b %d')} (Previous Week)"
-        current_week_label = f"{(end_date - datetime.timedelta(days=6)).strftime('%b %d')} - {end_date.strftime('%b %d')} (Current Week)"
+                # Display each DataFrame under a corresponding header
+                st.header("Trend Up Results")
+                st.dataframe(df_trend_up)
 
-        # Rename the DataFrame columns
-        df.rename(
-            columns={
-                "prev_week_count": prev_week_label,
-                "current_week_count": current_week_label,
-            },
-            inplace=True,
+                st.header("Trend Down Results")
+                st.dataframe(df_trend_down)
+
+                st.header("Same Results")
+                st.dataframe(df_trend_same)
+
+                st.header("New Booking Results")  # Display new booking results
+                st.dataframe(df_new_booking)
+            else:
+                st.error("Error: 'Trend' column not found in the DataFrame.")
+        else:
+            st.error("Please select all date ranges and a country to start the analysis.")
+
+        csv = convert_df(df)
+
+        st.download_button(
+        "Press to Download the whole booking csv",
+        csv,
+        "file.csv",
+        "text/csv",
+        key='download-csv'
         )
 
-        # Splitting the DataFrame based on the Trend
-        if "trend" in df.columns:
-            df_trend_up = df[df["trend"] == "Trend Up"]
-            df_trend_down = df[df["trend"] == "Trend Down"]
-            df_trend_same = df[df["trend"] == "Same"]
 
-            # Display each DataFrame under a corresponding header
-            st.header("Trend Up Results")
-            st.dataframe(df_trend_up)
-
-            st.header("Trend Down Results")
-            st.dataframe(df_trend_down)
-
-            st.header("Same Results")
-            st.dataframe(df_trend_same)
-        else:
-            st.error("Error: 'Trend' column not found in the DataFrame.")
 
 
 # ============================================================================= SIDE BAR MENU =================================================================

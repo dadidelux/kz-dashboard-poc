@@ -574,7 +574,7 @@ def create_query_sec(start_date, end_date, previous_year=False):
         # If it's the last week of the year, adjust the week to include January 1st of the next year
         if week_end.year > week_start.year:
             week_end = datetime.date(week_end.year, 1, 1)
-            print("aasdasd", week_end)
+        
 
         # Ensure the week does not exceed the end_date
         if week_end > end_date:
@@ -586,8 +586,6 @@ def create_query_sec(start_date, end_date, previous_year=False):
         # Adjust dates for previous year if required
         adjusted_week_start = week_start.replace(year=week_start.year - 1) if previous_year else week_start
         adjusted_week_end = week_end.replace(year=week_end.year - 1) if previous_year else week_end
-
-     
 
         query_count.append(
             f"COUNT(CASE WHEN bb.created_at >= '{adjusted_week_start}' AND bb.created_at < '{adjusted_week_end}' THEN 1 END) AS \"{week_label} Weekly Booking\""
@@ -603,7 +601,7 @@ def create_query_sec(start_date, end_date, previous_year=False):
     adjusted_start_date = start_date.replace(year=start_date.year - 1) if previous_year else start_date
     adjusted_end_date = end_date.replace(year=end_date.year - 1) if previous_year else end_date
 
-    st.write(adjusted_week_start, adjusted_week_end)
+    # st.write(adjusted_week_start, adjusted_week_end)
     query_parts.insert(0, "SELECT")
     query_parts.append(
         f"""
@@ -670,11 +668,11 @@ def analyze_booking_view_sec():
         query_current_year = create_query_sec(start_date, end_date)
         query_previous_year = create_query_sec(start_date, end_date, previous_year=True)
 
-        # Print SQL queries used for the analysis
-        st.text("SQL Query for Current Year:")
-        st.write(query_current_year)
-        st.text("SQL Query for Previous Year:")
-        st.write(query_previous_year)
+        # # Print SQL queries used for the analysis
+        # st.text("SQL Query for Current Year:")
+        # st.write(query_current_year)
+        # st.text("SQL Query for Previous Year:")
+        # st.write(query_previous_year)
 
         # Retrieve data for current and previous year
         data_current_year = pd.read_sql(query_current_year, conn)

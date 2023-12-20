@@ -812,7 +812,7 @@ def analyze_booking_view_sec():
         thisdayminus = get_bookings_for_today()
         # st.write(thisdayminus)
         # st.write(backlog_per_week)
-        st.write(is_selected_month_different_from_current(selected_date))
+        # st.write(is_selected_month_different_from_current(selected_date))
         if is_selected_month_different_from_current(selected_date):
             total_backlog = sum(backlog_per_week)
         else:

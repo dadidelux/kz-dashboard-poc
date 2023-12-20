@@ -647,6 +647,13 @@ def get_bookings_for_today():
     result = pd.read_sql(query, conn)
     return result.iloc[0]['bookings_count']
 
+def is_selected_month_different_from_current(selected_date):
+    current_month = datetime.date.today().month
+    selected_month = selected_date.month
+
+    # Check if the selected month is different from the current month
+    return selected_month != current_month
+
 # Main function for analyzing bookings
 def analyze_booking_view_sec():
     st.title("Weekly Booking Analysis")
@@ -671,6 +678,7 @@ def analyze_booking_view_sec():
         max_value=dec_31,
         format="MM/DD/YYYY",
     )
+    selected_date = vacation_dates[0]  # this is important to prevent the decrease of backlogs when the selected month is already in the past
 
     # Check if the returned value is a tuple with two dates
     if not isinstance(vacation_dates, tuple) or len(vacation_dates) != 2:
@@ -804,7 +812,11 @@ def analyze_booking_view_sec():
         thisdayminus = get_bookings_for_today()
         # st.write(thisdayminus)
         # st.write(backlog_per_week)
-        total_backlog = (sum(backlog_per_week)-thisdayminus)
+        st.write(is_selected_month_different_from_current(selected_date))
+        if is_selected_month_different_from_current(selected_date):
+            total_backlog = sum(backlog_per_week)
+        else:
+            total_backlog = (sum(backlog_per_week)-thisdayminus)
 
         # Display the backlog in Streamlit
         # Display the backlog in red using st.markdown

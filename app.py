@@ -617,6 +617,35 @@ def create_query_sec(start_date, end_date, previous_year=False):
 
     return " ".join(query_parts)
 
+@st.cache_data
+def get_bookings_for_today():
+    # Get today's date
+    today = datetime.date.today()
+
+    # Calculate yesterday's date
+    yesterday = today - datetime.timedelta(days=1)
+
+    # Format dates for the SQL query
+    start_date = yesterday.strftime('%Y-%m-%d')
+    end_date = today.strftime('%Y-%m-%d')
+
+    # SQL query
+    query = f"""
+    SELECT
+        COUNT(*) AS bookings_count
+    FROM booking_booking bb
+    JOIN experiences_experience ee ON bb.experience_id = ee.id
+    JOIN core_city cc ON ee.city_id = cc.id
+    JOIN core_country co ON cc.country_id = co.id
+    WHERE bb.payment_status = 'CAPTURED'
+    AND co.name = 'United Arab Emirates'
+    AND bb.created_at >= '{start_date}' AND bb.created_at < '{end_date}'
+    """
+
+    # Execute the query and return the result
+    conn = get_connection()
+    result = pd.read_sql(query, conn)
+    return result.iloc[0]['bookings_count']
 
 # Main function for analyzing bookings
 def analyze_booking_view_sec():
@@ -772,12 +801,15 @@ def analyze_booking_view_sec():
             for target, current in zip(weekly_targets_input, data_current_year.iloc[0])
             if current > 0
         ]
-        total_backlog = sum(backlog_per_week)
+        thisdayminus = get_bookings_for_today()
+        # st.write(thisdayminus)
+        # st.write(backlog_per_week)
+        total_backlog = (sum(backlog_per_week)-thisdayminus)
 
         # Display the backlog in Streamlit
         # Display the backlog in red using st.markdown
         st.markdown(
-            f"<span style='color: red'>Total Backlog: {total_backlog}</span>",
+            f"<span style='color: red'>Total Backlog: -{total_backlog}</span>",
             unsafe_allow_html=True,
         )
 
